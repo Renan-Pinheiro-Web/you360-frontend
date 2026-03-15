@@ -1,25 +1,39 @@
 // pages/admin/index.js
-// YOU360 — Painel Administrativo usando API PHP
+// YOU360 — Painel Admin completo (estilo Essence Aura + API PHP)
 
 import Head from 'next/head'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { api, isAuthenticated, removeToken } from '../../lib/apiClient'
 
-/* ── helpers ──────────────────────────────────────────────── */
+function maskPhone(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+  if (digits.length === 0) return ''
+  if (digits.length <= 2)  return `(${digits}`
+  if (digits.length <= 6)  return `(${digits.slice(0,2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`
+}
+
+const LINHAS_DB  = ['skincare','perfumes','estetica','cabelos','corpo','maquiagem']
+const BADGES     = ['', 'NOVO', 'DESTAQUE', 'EXCLUSIVO', 'LIMITADO', 'MAIS VENDIDO']
+const EMPTY_PROD = { nome:'', linha:'skincare', fragrancia:'', descricao:'', preco:'', badge:'', ativo:true, imagem_url:'', estoque:'' }
+const EMPTY_DEP  = { nome:'', cidade:'', texto:'', inicial:'', cor:'text-sage', bg:'bg-sage/30', ativo:true }
+
 const fmtBRL  = v => `R$ ${Number(v).toFixed(2).replace('.', ',')}`
 const fmtDate = s => s ? new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
+const fmtDateTime = s => s ? new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 
-/* ════════════════════════════════════════════════════════════ */
 export default function AdminPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('produtos')
-  const [adminNome, setAdminNome] = useState('Admin')
-  const [toast, setToast]         = useState(null)
+  const [activeTab,     setActiveTab]     = useState('hero')
+  const [adminNome,     setAdminNome]     = useState('Admin')
+  const [toast,         setToast]         = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 3200)
+    setTimeout(() => setToast(null), 3500)
   }, [])
 
   useEffect(() => {
@@ -34,846 +48,1450 @@ export default function AdminPage() {
     router.replace('/admin/login')
   }
 
-  const TABS = [
-    { key:'hero',       label:'Hero',       icon:'⬆️' },
-    { key:'linhas',     label:'Linhas',     icon:'🏷️' },
-    { key:'produtos',   label:'Produtos',   icon:'📦' },
-    { key:'depoimentos',label:'Depoimentos',icon:'💬' },
-    { key:'vendas',     label:'Vendas',     icon:'🛒' },
-    { key:'clientes',   label:'Clientes',   icon:'👥' },
-  ]
-
   return (
     <>
-      <Head>
-        <title>Admin — YOU360</title>
-        <meta name="robots" content="noindex,nofollow"/>
-      </Head>
+      <Head><title>Admin — YOU360</title><meta name="robots" content="noindex,nofollow"/></Head>
 
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-5 right-5 z-[100] px-5 py-3 text-white font-body text-sm flex items-center gap-3 shadow-xl transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-sage'}`}>
-          {toast.type === 'error' ? '✕' : '✓'} {toast.msg}
-        </div>
-      )}
+      <div className="min-h-screen bg-obsidian flex">
 
-      <div className="min-h-screen flex flex-col" style={{ background:'#0f0f0f' }}>
-
-        {/* Header Admin */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-white/8 flex-shrink-0">
-          <div className="flex items-center gap-3">
+        {/* ── SIDEBAR ── */}
+        <aside className="hidden md:flex w-60 flex-col border-r border-white/8 px-4 py-8 flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <div className="flex items-center gap-2 px-2 mb-10">
             <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
               <ellipse cx="14" cy="18" rx="9" ry="8" fill="#4a7c59" opacity=".85"/>
               <rect x="11" y="6" width="6" height="6" rx="2" fill="#fafaf8"/>
               <rect x="12.5" y="3" width="3" height="4" rx="1.5" fill="#4a7c59"/>
             </svg>
             <span className="font-display text-lg font-light tracking-widest text-white">
-              YOU<strong className="text-sage font-semibold">360</strong>
-              <span className="font-body text-xs text-white/30 ml-3 tracking-wider">ADMIN</span>
+              YOU<strong className="text-sage">360</strong>
             </span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="font-body text-xs text-white/30 hidden md:block">{adminNome}</span>
-            <a href="/" target="_blank" className="font-body text-xs tracking-widest text-white/30 hover:text-sage transition-colors hidden md:block">
-              VER LOJA ↗
+          <nav className="flex-1 space-y-1">
+            <SidebarLink active={activeTab==='hero'} onClick={() => setActiveTab('hero')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="11" rx="2"/><path d="M3 17h18M7 21h10"/></svg>}
+              label="Produto Inicial"/>
+            <SidebarLink active={activeTab==='linhas'} onClick={() => setActiveTab('linhas')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="3" width="6" height="18" rx="1"/><rect x="16" y="3" width="6" height="18" rx="1"/></svg>}
+              label="Linhas"/>
+            <SidebarLink active={activeTab==='produtos'} onClick={() => setActiveTab('produtos')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/></svg>}
+              label="Produtos"/>
+            <SidebarLink active={activeTab==='depoimentos'} onClick={() => setActiveTab('depoimentos')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>}
+              label="Depoimentos"/>
+            <div className="h-px bg-white/8 my-2"/>
+            <SidebarLink active={activeTab==='vendas'} onClick={() => setActiveTab('vendas')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>}
+              label="Vendas"/>
+            <SidebarLink active={activeTab==='clientes'} onClick={() => setActiveTab('clientes')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>}
+              label="Clientes"/>
+          </nav>
+          <div className="border-t border-white/8 pt-4 mt-4">
+            <p className="font-body text-xs text-white/30 px-2 mb-1 truncate">{adminNome}</p>
+            <a href="/" target="_blank" className="admin-sidebar-link w-full text-left hover:text-sage mb-1 block">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Ver Loja
             </a>
-            <button onClick={handleLogout}
-              className="font-body text-xs tracking-widest border border-white/15 text-white/50 hover:border-red-500/50 hover:text-red-400 px-4 py-2 transition-all">
-              SAIR
+            <button onClick={handleLogout} className="admin-sidebar-link w-full text-left hover:text-red-400">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+              Sair
             </button>
           </div>
-        </header>
+        </aside>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <aside className="w-48 border-r border-white/8 flex-shrink-0 py-6 hidden md:flex flex-col">
-            {TABS.map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-3 px-6 py-3 font-body text-xs tracking-widest transition-all text-left ${
-                  activeTab === tab.key
-                    ? 'text-sage border-r-2 border-sage bg-sage/10'
-                    : 'text-white/40 hover:text-white/70'
-                }`}>
-                <span>{tab.icon}</span>
-                {tab.label.toUpperCase()}
-              </button>
-            ))}
-          </aside>
-
+        {/* ── MAIN ── */}
+        <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+          {/* Mobile header */}
+          <div className="md:hidden flex items-center justify-between px-5 py-4 border-b border-white/8">
+            <span className="font-display text-lg font-light tracking-widest text-white">YOU<strong className="text-sage">360</strong></span>
+            <button onClick={handleLogout} className="font-body text-xs text-white/40 hover:text-white">Sair</button>
+          </div>
           {/* Mobile tabs */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/8 flex" style={{background:'#0f0f0f'}}>
-            {TABS.map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 flex flex-col items-center py-3 gap-1 font-body text-[10px] tracking-wider transition-all ${
-                  activeTab === tab.key ? 'text-sage' : 'text-white/30'
-                }`}>
-                <span className="text-base leading-none">{tab.icon}</span>
-                {tab.label}
+          <div className="md:hidden flex border-b border-white/8 overflow-x-auto">
+            {[{key:'hero',label:'HERO'},{key:'linhas',label:'LINHAS'},{key:'produtos',label:'PRODUTOS'},{key:'depoimentos',label:'DEP.'},{key:'vendas',label:'VENDAS'},{key:'clientes',label:'CLIENTES'}].map(t => (
+              <button key={t.key} onClick={() => setActiveTab(t.key)}
+                className={`flex-shrink-0 px-4 py-3 font-body text-xs tracking-widest transition-colors ${activeTab===t.key ? 'text-sage border-b-2 border-sage' : 'text-white/40'}`}>
+                {t.label}
               </button>
             ))}
           </div>
 
-          {/* Conteúdo */}
-          <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
-            {activeTab === 'hero'        && <HeroTab        showToast={showToast}/>}
-            {activeTab === 'linhas'      && <LinhasTab      showToast={showToast}/>}
-            {activeTab === 'produtos'    && <ProdutosTab    showToast={showToast}/>}
-            {activeTab === 'depoimentos' && <DepoimentosTab showToast={showToast}/>}
-            {activeTab === 'vendas'      && <VendasTab      showToast={showToast}/>}
-            {activeTab === 'clientes'    && <ClientesTab    showToast={showToast}/>}
-          </main>
-        </div>
+          {activeTab === 'hero'        && <HeroSection      showToast={showToast}/>}
+          {activeTab === 'linhas'      && <LinhasSection     showToast={showToast}/>}
+          {activeTab === 'produtos'    && <ProdutosSection   showToast={showToast} setDeleteConfirm={setDeleteConfirm}/>}
+          {activeTab === 'depoimentos' && <DepoimentosSection showToast={showToast}/>}
+          {activeTab === 'vendas'      && <VendasSection     showToast={showToast} setActiveTab={setActiveTab}/>}
+          {activeTab === 'clientes'    && <ClientesSection   showToast={showToast}/>}
+        </main>
       </div>
+
+      {/* Toast global */}
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 font-body text-sm shadow-xl flex items-center gap-3
+          ${toast.type==='error' ? 'bg-red-900 text-red-200 border border-red-700' : 'bg-sage text-white'}`}>
+          {toast.type==='error'
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>}
+          {toast.msg}
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <DeleteConfirmToast
+          produto={deleteConfirm}
+          onConfirm={async () => {
+            try {
+              await api.adminProducts.remove(deleteConfirm.id)
+              setDeleteConfirm(null)
+              showToast(`"${deleteConfirm.nome}" excluído`)
+              window.dispatchEvent(new Event('refetch-products'))
+            } catch (err) {
+              showToast(err.message || 'Erro ao excluir', 'error')
+              setDeleteConfirm(null)
+            }
+          }}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
+
+      <style jsx global>{`
+        .admin-input { width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:white; font-family:'Jost',sans-serif; font-size:0.875rem; padding:10px 14px; outline:none; transition:border-color 0.2s; }
+        .admin-input:focus { border-color:#4a7c59; }
+        .admin-input::placeholder { color:rgba(255,255,255,0.25); }
+        .admin-input option { background:#1a1a1a; color:white; }
+        .admin-sidebar-link { display:flex; align-items:center; gap:10px; padding:9px 12px; font-family:'Jost',sans-serif; font-size:0.75rem; letter-spacing:0.05em; color:rgba(255,255,255,0.4); transition:all 0.2s; border-radius:2px; }
+        .admin-sidebar-link:hover { color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.04); }
+        .admin-sidebar-link.active { color:#4a7c59; background:rgba(74,124,89,0.12); }
+        .drag-over { border-color:#4a7c59 !important; background:rgba(74,124,89,0.08) !important; }
+      `}</style>
     </>
   )
 }
 
-/* ══════════════════════════════════════════════════════════════
-   COMPONENTES DE ABA
-══════════════════════════════════════════════════════════════ */
 
-/* ── ABA: HERO ───────────────────────────────────────────── */
-function HeroTab({ showToast }) {
-  const [data, setData]     = useState({ nome:'', preco:'', imagem_url:'' })
-  const [saving, setSaving] = useState(false)
+// ══════════════════════════════════════════════════════════════
+//  ABA A — HERO
+// ══════════════════════════════════════════════════════════════
+function HeroSection({ showToast }) {
+  const [form,         setForm]         = useState({ nome:'', preco:'', imagem_url:'' })
+  const [imgPreview,   setImgPreview]   = useState('')
+  const [urlInput,     setUrlInput]     = useState('')
+  const [loading,      setLoading]      = useState(true)
+  const [saving,       setSaving]       = useState(false)
+  const [clearConfirm, setClearConfirm] = useState(false)
 
   useEffect(() => {
-    api.hero.get().then(h => { if (h) setData({ nome: h.nome||'', preco: h.preco||'', imagem_url: h.imagem_url||'' }) }).catch(()=>{})
+    api.hero.get().then(d => {
+      if (d) {
+        setForm({ nome: d.nome||'', preco: d.preco ? String(d.preco) : '', imagem_url: d.imagem_url||'' })
+        setImgPreview(d.imagem_url||'')
+        setUrlInput(d.imagem_url||'')
+      }
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
-  const save = async () => {
-    setSaving(true)
+  const handleSave = async (e) => {
+    e.preventDefault(); setSaving(true)
     try {
-      await api.hero.update(data)
-      showToast('Hero atualizado!')
-    } catch(e) { showToast(e.message,'error') } finally { setSaving(false) }
+      await api.hero.update({
+        nome: form.nome.trim()||null,
+        preco: form.preco ? parseFloat(form.preco) : null,
+        imagem_url: urlInput.trim()||null,
+      })
+      setImgPreview(urlInput.trim())
+      showToast('Produto inicial atualizado!')
+    } catch (err) { showToast(err.message||'Erro ao salvar','error') }
+    finally { setSaving(false) }
   }
 
+  if (loading) return <SectionLoader/>
   return (
-    <TabWrapper title="Hero" subtitle="Produto destacado na seção inicial">
-      <div className="grid md:grid-cols-2 gap-6 max-w-2xl">
-        <Field label="Nome do produto" value={data.nome} onChange={v=>setData({...data,nome:v})}/>
-        <Field label="Preço (R$)" type="number" value={data.preco} onChange={v=>setData({...data,preco:v})}/>
-        <div className="md:col-span-2">
-          <Field label="URL da imagem" value={data.imagem_url} onChange={v=>setData({...data,imagem_url:v})} placeholder="https://..."/>
-        </div>
-        {data.imagem_url && (
-          <div className="md:col-span-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.imagem_url} alt="" className="h-40 object-cover border border-white/10" onError={()=>{}}/>
+    <div className="flex-1 overflow-auto">
+      <header className="px-6 md:px-8 py-5 border-b border-white/8">
+        <h1 className="font-display text-2xl font-light text-white">Produto Inicial</h1>
+        <p className="font-body text-xs text-white/30 mt-0.5">Define o produto exibido na sessão principal do site</p>
+      </header>
+      <div className="px-6 md:px-8 py-8 max-w-xl">
+        <form onSubmit={handleSave} className="space-y-6">
+          <div className="border border-white/10 p-5" style={{ background:'rgba(255,255,255,0.03)' }}>
+            <p className="font-body text-xs tracking-widest text-white/40 mb-4">IMAGEM DO PRODUTO INICIAL</p>
+            <div className="flex items-start gap-5">
+              <div className="w-28 h-36 flex-shrink-0 border border-white/10 overflow-hidden flex items-center justify-center" style={{ background:'rgba(74,124,89,0.1)' }}>
+                {imgPreview
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={imgPreview} alt="preview" className="w-full h-full object-contain p-2"/>
+                  : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="1" opacity=".5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M3 21l5-5 4 4 4-5 5 6"/></svg>}
+              </div>
+              <div className="flex-1">
+                <p className="font-body text-xs text-white/40 mb-2 tracking-widest">URL DA IMAGEM</p>
+                <input
+                  value={urlInput}
+                  onChange={e => { setUrlInput(e.target.value); setImgPreview(e.target.value) }}
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  className="admin-input mb-2"
+                />
+                {imgPreview && !clearConfirm && (
+                  <button type="button" onClick={() => setClearConfirm(true)} className="font-body text-xs text-red-400/60 hover:text-red-400 transition-colors block">Remover imagem</button>
+                )}
+                {clearConfirm && (
+                  <div className="border border-red-500/30 px-3 py-2 mb-2" style={{ background:'rgba(220,38,38,0.08)' }}>
+                    <p className="font-body text-xs text-red-300 mb-2">Tem certeza?</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => { setUrlInput(''); setImgPreview(''); setForm(f=>({...f,imagem_url:''})); setClearConfirm(false) }} className="font-body text-xs bg-red-700 text-white px-3 py-1">SIM</button>
+                      <button type="button" onClick={() => setClearConfirm(false)} className="font-body text-xs border border-white/20 text-white/50 px-3 py-1">CANCELAR</button>
+                    </div>
+                  </div>
+                )}
+                <p className="font-body text-xs text-white/25">Cole a URL de uma imagem pública</p>
+              </div>
+            </div>
           </div>
-        )}
+          <FormField label="NOME DO PRODUTO">
+            <input value={form.nome} onChange={e => setForm({...form,nome:e.target.value})} placeholder="Ex: YOU Glow Sérum" className="admin-input"/>
+          </FormField>
+          <FormField label="PREÇO (R$)">
+            <input type="number" step="0.01" min="0" value={form.preco} onChange={e => setForm({...form,preco:e.target.value})} placeholder="189.90" className="admin-input"/>
+          </FormField>
+          <button type="submit" disabled={saving} className="w-full bg-sage text-white font-body text-xs tracking-widest py-4 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
+            {saving ? 'SALVANDO...' : 'SALVAR PRODUTO INICIAL'}
+          </button>
+        </form>
       </div>
-      <SaveBtn onClick={save} saving={saving}/>
-    </TabWrapper>
+    </div>
   )
 }
 
-/* ── ABA: LINHAS ─────────────────────────────────────────── */
-function LinhasTab({ showToast }) {
-  const [linhas, setLinhas] = useState([])
-  const [saving, setSaving] = useState(null)
+
+// ══════════════════════════════════════════════════════════════
+//  ABA B — LINHAS
+// ══════════════════════════════════════════════════════════════
+const LINHA_BG_LABELS = ['Linha 1 — Fundo verde/rosado','Linha 2 — Fundo escuro · Destaque','Linha 3 — Fundo rosado']
+
+function LinhasSection({ showToast }) {
+  const [loading, setLoading]   = useState(true)
+  const [saving,  setSaving]    = useState(null)
+  const [forms,   setForms]     = useState([
+    {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
+    {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
+    {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
+  ])
 
   useEffect(() => {
-    api.linhas.list().then(setLinhas).catch(()=>{})
+    api.linhas.list().then(data => {
+      if (data && data.length >= 3) {
+        setForms(data.slice(0,3).map(l => ({
+          nome_linha: l.nome_linha||'', titulo: l.titulo||'',
+          subtitulo: l.subtitulo||'', descricao: l.descricao||'', imagem_url: l.imagem_url||''
+        })))
+      }
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
-  const save = async (linha) => {
-    setSaving(linha.id)
+  const updateForm = (idx, field, value) => setForms(forms.map((f,i) => i===idx ? {...f,[field]:value} : f))
+
+  const handleSave = async (e, idx) => {
+    e.preventDefault(); setSaving(idx+1)
     try {
-      const updated = await api.linhas.update(linha.id, linha)
-      setLinhas(prev => prev.map(l => l.id === linha.id ? updated : l))
-      showToast(`Linha ${linha.id} salva!`)
-    } catch(e) { showToast(e.message,'error') } finally { setSaving(null) }
+      await api.linhas.update(idx+1, {
+        nome_linha: forms[idx].nome_linha.trim(),
+        titulo: forms[idx].titulo.trim()||null,
+        subtitulo: forms[idx].subtitulo.trim()||null,
+        descricao: forms[idx].descricao.trim()||null,
+        imagem_url: forms[idx].imagem_url.trim()||null,
+      })
+      showToast(`Linha ${idx+1} atualizada!`)
+    } catch (err) { showToast(err.message||'Erro','error') }
+    finally { setSaving(null) }
   }
 
-  const update = (id, field, val) =>
-    setLinhas(prev => prev.map(l => l.id === id ? {...l,[field]:val} : l))
-
+  if (loading) return <SectionLoader/>
   return (
-    <TabWrapper title="Linhas" subtitle="3 banners de coleções da loja">
-      <div className="grid gap-8 max-w-3xl">
-        {linhas.map(l => (
-          <div key={l.id} className="border border-white/10 p-6 space-y-4" style={{background:'rgba(255,255,255,0.03)'}}>
-            <p className="font-body text-xs tracking-widest text-sage">LINHA {l.id}</p>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Nome da linha"  value={l.nome_linha||''} onChange={v=>update(l.id,'nome_linha',v)}/>
-              <Field label="Título"          value={l.titulo||''}    onChange={v=>update(l.id,'titulo',v)}/>
-              <Field label="Subtítulo"       value={l.subtitulo||''} onChange={v=>update(l.id,'subtitulo',v)}/>
-              <Field label="Descrição"       value={l.descricao||''} onChange={v=>update(l.id,'descricao',v)}/>
-              <div className="col-span-2">
-                <Field label="URL da imagem" value={l.imagem_url||''} onChange={v=>update(l.id,'imagem_url',v)}/>
+    <div className="flex-1 overflow-auto">
+      <header className="px-6 md:px-8 py-5 border-b border-white/8">
+        <h1 className="font-display text-2xl font-light text-white">Linhas</h1>
+        <p className="font-body text-xs text-white/30 mt-0.5">Edite o conteúdo dos 3 banners de coleções</p>
+      </header>
+      <div className="px-6 md:px-8 py-8 space-y-10 max-w-2xl">
+        {forms.map((form, idx) => (
+          <div key={idx} className="border border-white/8 p-6" style={{background:'rgba(255,255,255,0.02)'}}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0">
+                <span className="font-display text-sage text-sm">{idx+1}</span>
+              </div>
+              <div>
+                <p className="font-body text-sm text-white font-medium">Linha {idx+1}</p>
+                <p className="font-body text-xs text-white/30">{LINHA_BG_LABELS[idx]}</p>
               </div>
             </div>
-            {l.imagem_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={l.imagem_url} alt="" className="h-28 object-cover border border-white/10" onError={()=>{}}/>
-            )}
-            <SaveBtn onClick={()=>save(l)} saving={saving===l.id}/>
+            <form onSubmit={(e) => handleSave(e,idx)} className="space-y-4">
+              <FormField label="URL DA IMAGEM">
+                <div className="flex gap-3 items-start">
+                  {form.imagem_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={form.imagem_url} alt="preview" className="w-16 h-20 object-cover border border-white/10 flex-shrink-0"/>
+                  )}
+                  <input value={form.imagem_url} onChange={e => updateForm(idx,'imagem_url',e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
+                </div>
+              </FormField>
+              <FormField label="NOME DA LINHA">
+                <input value={form.nome_linha} onChange={e => updateForm(idx,'nome_linha',e.target.value)} placeholder="Ex: LINHA SKINCARE" className="admin-input"/>
+              </FormField>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="TÍTULO"><input value={form.titulo} onChange={e => updateForm(idx,'titulo',e.target.value)} placeholder="Ex: Skin" className="admin-input"/></FormField>
+                <FormField label="SUBTÍTULO"><input value={form.subtitulo} onChange={e => updateForm(idx,'subtitulo',e.target.value)} placeholder="Ex: Glow" className="admin-input"/></FormField>
+              </div>
+              <FormField label="DESCRIÇÃO CURTA">
+                <input value={form.descricao} onChange={e => updateForm(idx,'descricao',e.target.value)} placeholder="Ex: Vitamina C, Colágeno & Ácido Hialurônico" className="admin-input"/>
+              </FormField>
+              <button type="submit" disabled={saving===idx+1} className="w-full bg-sage/20 border border-sage/40 text-sage font-body text-xs tracking-widest py-3 hover:bg-sage hover:text-white hover:border-sage transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                {saving===idx+1 && <div className="w-4 h-4 border-2 border-sage/30 border-t-sage rounded-full animate-spin"/>}
+                {saving===idx+1 ? 'SALVANDO...' : `SALVAR LINHA ${idx+1}`}
+              </button>
+            </form>
           </div>
         ))}
       </div>
-    </TabWrapper>
+    </div>
   )
 }
 
-/* ── ABA: PRODUTOS ───────────────────────────────────────── */
-function ProdutosTab({ showToast }) {
-  const [products, setProducts]   = useState([])
-  const [search, setSearch]       = useState('')
-  const [filterAtivo, setFilter]  = useState('all')
-  const [modal, setModal]         = useState(null) // null | 'new' | produto
-  const [histModal, setHistModal] = useState(null)
-  const [gallModal, setGallModal] = useState(null)
-  const [loading, setLoading]     = useState(true)
+
+// ══════════════════════════════════════════════════════════════
+//  ABA C — PRODUTOS
+// ══════════════════════════════════════════════════════════════
+function ProdutosSection({ showToast, setDeleteConfirm }) {
+  const [products,     setProducts]     = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [saving,       setSaving]       = useState(false)
+  const [duplicating,  setDuplicating]  = useState(null)
+  const [showForm,     setShowForm]     = useState(false)
+  const [editingId,    setEditingId]    = useState(null)
+  const [form,         setForm]         = useState(EMPTY_PROD)
+  const [search,       setSearch]       = useState('')
+  const [statusFilter, setStatusFilter] = useState('todos')
+  const [savingOrder,  setSavingOrder]  = useState(false)
+  const [priceHistory, setPriceHistory] = useState(null)
+  const [galleryProd,  setGalleryProd]  = useState(null)
+  const [deleting,     setDeleting]     = useState(null)
+
   const dragItem  = useRef(null)
   const dragOver  = useRef(null)
+  const [dragIndex, setDragIndex] = useState(null)
+  const [overIndex, setOverIndex] = useState(null)
 
-  const load = useCallback(() => {
+  const fetchProducts = async () => {
     setLoading(true)
-    api.adminProducts.list()
-      .then(setProducts)
-      .catch(()=>showToast('Erro ao carregar produtos','error'))
-      .finally(()=>setLoading(false))
-  }, [showToast])
+    try {
+      const data = await api.adminProducts.list()
+      setProducts(data||[])
+    } catch {}
+    setLoading(false)
+  }
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { fetchProducts() }, [])
+  useEffect(() => {
+    const handler = () => fetchProducts()
+    window.addEventListener('refetch-products', handler)
+    return () => window.removeEventListener('refetch-products', handler)
+  }, [])
 
   const filtered = products.filter(p => {
-    if (filterAtivo === 'active'   && !p.ativo) return false
-    if (filterAtivo === 'inactive' &&  p.ativo) return false
-    if (search && !p.nome.toLowerCase().includes(search.toLowerCase())) return false
-    return true
+    const matchSearch = p.nome?.toLowerCase().includes(search.toLowerCase()) || p.linha?.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = statusFilter==='todos' ? true : statusFilter==='ativos' ? p.ativo===true : p.ativo===false
+    return matchSearch && matchStatus
   })
 
-  const handleDragEnd = async () => {
-    if (dragItem.current === null || dragOver.current === null) return
-    const copy = [...products]
-    const dragged = copy.splice(dragItem.current, 1)[0]
-    copy.splice(dragOver.current, 0, dragged)
-    dragItem.current = null; dragOver.current = null
-    setProducts(copy)
+  const countAtivos   = products.filter(p=>p.ativo).length
+  const countInativos = products.filter(p=>!p.ativo).length
+
+  const handleDragStart = (idx) => { dragItem.current=idx; setDragIndex(idx) }
+  const handleDragEnter = (idx) => { dragOver.current=idx; setOverIndex(idx) }
+  const handleDragEnd   = async () => {
+    const from=dragItem.current; const to=dragOver.current
+    setDragIndex(null); setOverIndex(null); dragItem.current=null; dragOver.current=null
+    if (from===null||to===null||from===to) return
+    const reordered=[...products]; const [moved]=reordered.splice(from,1); reordered.splice(to,0,moved)
+    setProducts(reordered); setSavingOrder(true)
     try {
-      await api.adminProducts.reorder(copy.map(p => p.id))
+      await api.adminProducts.reorder(reordered.map((p,i) => ({ id:p.id, ordem:i })))
       showToast('Ordem salva!')
-    } catch(e) { showToast(e.message,'error'); load() }
+    } catch { showToast('Erro ao salvar ordem','error') }
+    finally { setSavingOrder(false) }
+  }
+
+  const handleDuplicate = async (p) => {
+    setDuplicating(p.id)
+    try {
+      await api.adminProducts.duplicate(p.id)
+      showToast(`"${p.nome}" duplicado!`); fetchProducts()
+    } catch (err) { showToast(err.message||'Erro','error') }
+    finally { setDuplicating(null) }
+  }
+
+  const openPriceHistory = async (p) => {
+    try {
+      const data = await api.adminProducts.priceHistory(p.id)
+      setPriceHistory({ produto:p, historico:data||[] })
+    } catch { setPriceHistory({ produto:p, historico:[] }) }
+  }
+
+  const openNew  = () => { setEditingId(null); setForm(EMPTY_PROD); setShowForm(true) }
+  const openEdit = (p) => {
+    setEditingId(p.id)
+    setForm({ nome:p.nome||'', linha:p.linha||'skincare', fragrancia:p.fragrancia||'', descricao:p.descricao||'', preco:p.preco?String(p.preco):'', badge:p.badge||'', ativo:p.ativo!==false, imagem_url:p.imagem_url||'', estoque:p.estoque!==null&&p.estoque!==undefined?String(p.estoque):'' })
+    setShowForm(true)
+  }
+  const closeForm = () => { setShowForm(false); setEditingId(null) }
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    if (!form.nome.trim()) return showToast('Nome é obrigatório','error')
+    if (!form.preco||isNaN(form.preco)) return showToast('Preço inválido','error')
+    setSaving(true)
+    try {
+      const estoqueVal = form.estoque===''||form.estoque===null ? null : parseInt(form.estoque)
+      const payload = { nome:form.nome.trim(), linha:form.linha, fragrancia:form.fragrancia.trim(), descricao:form.descricao.trim(), preco:parseFloat(form.preco), badge:form.badge||null, ativo:form.ativo, imagem_url:form.imagem_url.trim()||null, estoque:estoqueVal }
+      if (editingId) {
+        await api.adminProducts.update(editingId, payload)
+        showToast('Produto atualizado!')
+      } else {
+        await api.adminProducts.create({...payload, ordem:products.length})
+        showToast('Produto cadastrado!')
+      }
+      closeForm(); fetchProducts()
+    } catch (err) { showToast(err.message||'Erro','error') }
+    finally { setSaving(false) }
+  }
+
+  const handleDelete = (p) => {
+    setDeleting(p.id); setDeleteConfirm({id:p.id,nome:p.nome})
+    const cleanup=()=>setDeleting(null)
+    window.addEventListener('refetch-products',cleanup,{once:true})
+    setTimeout(cleanup,10000)
   }
 
   const toggleAtivo = async (p) => {
-    try {
-      await api.adminProducts.toggle(p.id)
-      setProducts(prev => prev.map(x => x.id === p.id ? {...x, ativo: !x.ativo} : x))
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  const duplicate = async (p) => {
-    try {
-      const novo = await api.adminProducts.duplicate(p.id)
-      setProducts(prev => [...prev, novo])
-      showToast(`"${p.nome}" duplicado!`)
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  const remove = async (p) => {
-    if (!confirm(`Excluir "${p.nome}"? Esta ação não pode ser desfeita.`)) return
-    try {
-      await api.adminProducts.remove(p.id)
-      setProducts(prev => prev.filter(x => x.id !== p.id))
-      showToast('Produto excluído.')
-    } catch(e) { showToast(e.message,'error') }
+    try { await api.adminProducts.toggle(p.id); fetchProducts() } catch {}
   }
 
   return (
-    <TabWrapper title="Produtos" subtitle={`${products.length} produtos cadastrados`}>
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="Buscar produto..."
-          className="flex-1 min-w-[180px] px-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 border border-white/10 focus:outline-none focus:border-sage bg-white/5"/>
-        <select value={filterAtivo} onChange={e=>setFilter(e.target.value)}
-          className="px-3 py-2.5 font-body text-xs text-white border border-white/10 bg-black focus:outline-none">
-          <option value="all">Todos</option>
-          <option value="active">Ativos</option>
-          <option value="inactive">Inativos</option>
-        </select>
-        <button onClick={()=>setModal('new')}
-          className="bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
-          + NOVO PRODUTO
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-sage/30 border-t-sage rounded-full animate-spin"/>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((p, i) => (
-            <div key={p.id} draggable
-              onDragStart={()=>dragItem.current=i}
-              onDragEnter={()=>dragOver.current=i}
-              onDragEnd={handleDragEnd}
-              onDragOver={e=>e.preventDefault()}
-              className="flex items-center gap-4 p-4 border border-white/8 hover:border-sage/30 transition-all cursor-grab active:cursor-grabbing group"
-              style={{background:'rgba(255,255,255,0.03)'}}>
-
-              <span className="text-white/15 group-hover:text-white/40 transition-colors text-lg select-none">⠿</span>
-
-              {/* Imagem mini */}
-              <div className="w-12 h-12 flex-shrink-0 overflow-hidden bg-sage/10 flex items-center justify-center">
-                {p.imagem_url
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={p.imagem_url} alt="" className="w-full h-full object-cover" onError={()=>{}}/>
-                  : <span className="text-sage/40 text-xl">📦</span>}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-display text-base text-white font-light truncate">{p.nome}</p>
-                  {p.badge && <span className="bg-sage/20 text-sage font-body text-xs px-2 py-0.5">{p.badge}</span>}
-                  {!p.ativo && <span className="bg-white/10 text-white/30 font-body text-xs px-2 py-0.5">INATIVO</span>}
-                </div>
-                <div className="flex items-center gap-4 mt-1">
-                  <span className="font-body text-xs text-white/40">{p.linha || '—'}</span>
-                  <span className="font-display text-sm text-sage">{fmtBRL(p.preco)}</span>
-                  <span className="font-body text-xs text-white/30">
-                    {p.estoque !== null && p.estoque !== undefined ? `Estoque: ${p.estoque}` : 'Estoque: ∞'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Ações */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <ActionBtn title="Editar"       icon="✏️"  onClick={()=>setModal(p)}/>
-                <ActionBtn title="Galeria"      icon="🖼️"  onClick={()=>setGallModal(p)}/>
-                <ActionBtn title="Preços"       icon="📈"  onClick={()=>setHistModal(p)}/>
-                <ActionBtn title={p.ativo?'Desativar':'Ativar'} icon={p.ativo?'👁️':'🚫'} onClick={()=>toggleAtivo(p)}/>
-                <ActionBtn title="Duplicar"     icon="📋"  onClick={()=>duplicate(p)}/>
-                <ActionBtn title="Excluir"      icon="🗑️"  onClick={()=>remove(p)} danger/>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="text-center py-16">
-              <p className="font-display text-2xl text-white/20 italic">Nenhum produto encontrado.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Modais */}
-      {modal && (
-        <ProductModal
-          product={modal === 'new' ? null : modal}
-          onClose={()=>setModal(null)}
-          onSaved={(p)=>{ load(); setModal(null); showToast(modal==='new'?'Produto criado!':'Produto atualizado!') }}
-          showToast={showToast}
-        />
-      )}
-      {histModal && (
-        <PriceHistoryModal product={histModal} onClose={()=>setHistModal(null)}/>
-      )}
-      {gallModal && (
-        <GalleryModal product={gallModal} onClose={()=>setGallModal(null)} showToast={showToast}/>
-      )}
-    </TabWrapper>
-  )
-}
-
-/* ── Modal Produto ───────────────────────────────────────── */
-function ProductModal({ product, onClose, onSaved, showToast }) {
-  const isNew = !product
-  const [form, setForm] = useState({
-    nome:      product?.nome       || '',
-    linha:     product?.linha      || '',
-    fragrancia:product?.fragrancia || '',
-    descricao: product?.descricao  || '',
-    preco:     product?.preco      || '',
-    badge:     product?.badge      || '',
-    imagem_url:product?.imagem_url || '',
-    ativo:     product?.ativo !== undefined ? product.ativo : true,
-    estoque:   product?.estoque !== null && product?.estoque !== undefined ? product.estoque : '',
-  })
-  const [saving, setSaving] = useState(false)
-  const set = (k, v) => setForm(f => ({...f,[k]:v}))
-
-  const save = async () => {
-    if (!form.nome.trim()) { showToast('Nome é obrigatório','error'); return }
-    if (!form.preco || isNaN(form.preco)) { showToast('Preço inválido','error'); return }
-    setSaving(true)
-    try {
-      const payload = { ...form, preco: parseFloat(form.preco), estoque: form.estoque !== '' ? parseInt(form.estoque) : null }
-      if (isNew) await api.adminProducts.create(payload)
-      else       await api.adminProducts.update(product.id, payload)
-      onSaved()
-    } catch(e) { showToast(e.message,'error') } finally { setSaving(false) }
-  }
-
-  return (
-    <Modal title={isNew ? 'Novo Produto' : `Editar: ${product.nome}`} onClose={onClose} size="lg">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2"><Field label="Nome *" value={form.nome} onChange={v=>set('nome',v)}/></div>
-        <Field label="Linha" value={form.linha} onChange={v=>set('linha',v)} placeholder="skincare / perfumes / estetica"/>
-        <Field label="Badge" value={form.badge} onChange={v=>set('badge',v)} placeholder="NOVO / DESTAQUE"/>
-        <div className="col-span-2"><Field label="Fragrância / Composição" value={form.fragrancia} onChange={v=>set('fragrancia',v)}/></div>
-        <Field label="Preço (R$) *" type="number" value={form.preco} onChange={v=>set('preco',v)}/>
-        <Field label="Estoque (vazio = ilimitado)" type="number" value={form.estoque} onChange={v=>set('estoque',v)}/>
-        <div className="col-span-2"><Field label="URL da imagem" value={form.imagem_url} onChange={v=>set('imagem_url',v)}/></div>
-        <div className="col-span-2">
-          <label className="font-body text-xs tracking-widest text-white/40 block mb-2">DESCRIÇÃO</label>
-          <textarea value={form.descricao} onChange={e=>set('descricao',e.target.value)} rows={3}
-            className="w-full px-4 py-3 font-body text-sm text-white placeholder:text-white/25 border border-white/10 focus:outline-none focus:border-sage bg-white/5 resize-none"/>
-        </div>
-        <div className="col-span-2 flex items-center gap-3">
-          <label className="font-body text-xs tracking-widest text-white/40">STATUS</label>
-          <button onClick={()=>set('ativo',!form.ativo)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${form.ativo ? 'bg-sage' : 'bg-white/15'}`}>
-            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${form.ativo ? 'left-7' : 'left-1'}`}/>
-          </button>
-          <span className="font-body text-xs text-white/50">{form.ativo ? 'Ativo' : 'Inativo'}</span>
-        </div>
-      </div>
-      <div className="flex gap-3 mt-6">
-        <button onClick={onClose} className="flex-1 border border-white/15 text-white/50 font-body text-xs tracking-widest py-3 hover:border-white/30 transition-all">CANCELAR</button>
-        <SaveBtn onClick={save} saving={saving} className="flex-1"/>
-      </div>
-    </Modal>
-  )
-}
-
-/* ── Modal Galeria ───────────────────────────────────────── */
-function GalleryModal({ product, onClose, showToast }) {
-  const [images, setImages] = useState([])
-  const [newUrl, setNewUrl] = useState('')
-
-  useEffect(() => {
-    api.adminProducts.list().then(()=>{})  // refresh
-    api.products.gallery(product.id).then(setImages).catch(()=>{})
-  }, [product.id])
-
-  const add = async () => {
-    if (!newUrl.trim()) return
-    try {
-      await api.adminProducts.addGallery(product.id, newUrl)
-      const updated = await api.products.gallery(product.id)
-      setImages(updated); setNewUrl('')
-      showToast('Imagem adicionada!')
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  const remove = async (imgId) => {
-    try {
-      await api.adminProducts.removeGallery(product.id, imgId)
-      setImages(prev => prev.filter(i => i.id !== imgId))
-      showToast('Imagem removida.')
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  return (
-    <Modal title={`Galeria: ${product.nome}`} onClose={onClose}>
-      <div className="flex gap-2 mb-6">
-        <input value={newUrl} onChange={e=>setNewUrl(e.target.value)}
-          placeholder="URL da imagem (https://...)"
-          className="flex-1 px-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 border border-white/10 focus:outline-none focus:border-sage bg-white/5"/>
-        <button onClick={add} className="bg-sage text-white font-body text-xs tracking-widest px-4 py-2.5 hover:bg-sage-dark transition-all">
-          + ADD
-        </button>
-      </div>
-      {images.length === 0 ? (
-        <p className="font-body text-sm text-white/30 text-center py-8">Nenhuma imagem extra cadastrada.</p>
-      ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {images.map(img => (
-            <div key={img.id} className="relative group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.imagem_url} alt="" className="w-full aspect-square object-cover border border-white/10" onError={()=>{}}/>
-              <button onClick={()=>remove(img.id)}
-                className="absolute top-1 right-1 w-7 h-7 bg-red-600 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </Modal>
-  )
-}
-
-/* ── Modal Histórico de Preço ────────────────────────────── */
-function PriceHistoryModal({ product, onClose }) {
-  const [hist, setHist] = useState([])
-  useEffect(() => {
-    api.adminProducts.priceHistory(product.id).then(d => setHist(d.historico || [])).catch(()=>{})
-  }, [product.id])
-
-  return (
-    <Modal title={`Histórico de Preços: ${product.nome}`} onClose={onClose}>
-      {hist.length === 0 ? (
-        <p className="font-body text-sm text-white/30 text-center py-8">Nenhuma alteração registrada.</p>
-      ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/10">
-              {['Data','Anterior','Novo','Variação'].map(h => (
-                <th key={h} className="text-left font-body text-xs tracking-widest text-white/30 pb-3 pr-4">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hist.map(h => {
-              const diff = ((h.preco_novo - h.preco_anterior) / h.preco_anterior * 100).toFixed(1)
-              const up   = h.preco_novo > h.preco_anterior
-              return (
-                <tr key={h.id} className="border-b border-white/5">
-                  <td className="font-body text-xs text-white/50 py-3 pr-4">{fmtDate(h.created_at)}</td>
-                  <td className="font-body text-sm text-white/60 py-3 pr-4">{fmtBRL(h.preco_anterior)}</td>
-                  <td className="font-body text-sm text-white py-3 pr-4">{fmtBRL(h.preco_novo)}</td>
-                  <td className={`font-body text-xs py-3 ${up ? 'text-green-400' : 'text-red-400'}`}>
-                    {up ? '▲' : '▼'} {Math.abs(diff)}%
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-    </Modal>
-  )
-}
-
-/* ── ABA: DEPOIMENTOS ────────────────────────────────────── */
-function DepoimentosTab({ showToast }) {
-  const [deps, setDeps]   = useState([])
-  const [modal, setModal] = useState(null)
-
-  const load = useCallback(() => {
-    api.depoimentos.adminList().then(setDeps).catch(()=>{})
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  const toggle = async (d) => {
-    try {
-      await api.depoimentos.toggle(d.id)
-      setDeps(prev => prev.map(x => x.id===d.id ? {...x,ativo:!x.ativo} : x))
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  const remove = async (d) => {
-    if (!confirm('Excluir este depoimento?')) return
-    try {
-      await api.depoimentos.remove(d.id)
-      setDeps(prev => prev.filter(x => x.id!==d.id))
-      showToast('Depoimento excluído.')
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  return (
-    <TabWrapper title="Depoimentos" subtitle={`${deps.length} depoimentos`}>
-      <button onClick={()=>setModal('new')}
-        className="mb-6 bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all">
-        + NOVO DEPOIMENTO
-      </button>
-      <div className="space-y-3">
-        {deps.map(d => (
-          <div key={d.id} className="flex items-start gap-4 p-4 border border-white/8 hover:border-sage/20 transition-all" style={{background:'rgba(255,255,255,0.02)'}}>
-            <div className={`w-10 h-10 rounded-full ${d.bg||'bg-sage/30'} flex items-center justify-center font-display ${d.cor||'text-sage'} flex-shrink-0`}>
-              {d.inicial || d.nome?.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-body text-sm text-white">{d.nome}</span>
-                <span className="font-body text-xs text-white/30">{d.cidade}</span>
-                {!d.ativo && <span className="bg-white/10 text-white/30 font-body text-xs px-2 py-0.5">INATIVO</span>}
-              </div>
-              <p className="font-body text-xs text-white/50 mt-1 line-clamp-2">"{d.texto}"</p>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <ActionBtn title="Editar"                              icon="✏️"  onClick={()=>setModal(d)}/>
-              <ActionBtn title={d.ativo?'Desativar':'Ativar'}        icon={d.ativo?'👁️':'🚫'} onClick={()=>toggle(d)}/>
-              <ActionBtn title="Excluir"                             icon="🗑️"  onClick={()=>remove(d)} danger/>
-            </div>
-          </div>
-        ))}
-      </div>
-      {modal && (
-        <DepModal dep={modal==='new'?null:modal} onClose={()=>setModal(null)}
-          onSaved={()=>{ load(); setModal(null); showToast(modal==='new'?'Depoimento criado!':'Depoimento atualizado!') }}
-          showToast={showToast}/>
-      )}
-    </TabWrapper>
-  )
-}
-
-function DepModal({ dep, onClose, onSaved, showToast }) {
-  const isNew = !dep
-  const [form, setForm] = useState({ nome:dep?.nome||'', cidade:dep?.cidade||'', texto:dep?.texto||'', inicial:dep?.inicial||'', cor:dep?.cor||'text-sage', bg:dep?.bg||'bg-sage/30', ativo:dep?.ativo!==undefined?dep.ativo:true })
-  const [saving, setSaving] = useState(false)
-  const set = (k,v) => setForm(f=>({...f,[k]:v}))
-
-  const save = async () => {
-    if (!form.nome.trim() || !form.texto.trim()) { showToast('Nome e texto obrigatórios','error'); return }
-    setSaving(true)
-    try {
-      if (isNew) await api.depoimentos.create(form)
-      else       await api.depoimentos.update(dep.id, form)
-      onSaved()
-    } catch(e) { showToast(e.message,'error') } finally { setSaving(false) }
-  }
-
-  return (
-    <Modal title={isNew?'Novo Depoimento':'Editar Depoimento'} onClose={onClose}>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Nome *"   value={form.nome}    onChange={v=>set('nome',v)}/>
-          <Field label="Cidade"   value={form.cidade}  onChange={v=>set('cidade',v)}/>
-          <Field label="Inicial"  value={form.inicial} onChange={v=>set('inicial',v)} placeholder="F"/>
-          <Field label="Cor CSS"  value={form.cor}     onChange={v=>set('cor',v)}    placeholder="text-sage"/>
-          <Field label="Bg CSS"   value={form.bg}      onChange={v=>set('bg',v)}     placeholder="bg-sage/30"/>
-        </div>
+    <div className="flex-1 flex flex-col min-h-0">
+      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-white/8">
         <div>
-          <label className="font-body text-xs tracking-widest text-white/40 block mb-2">TEXTO *</label>
-          <textarea value={form.texto} onChange={e=>set('texto',e.target.value)} rows={4}
-            className="w-full px-4 py-3 font-body text-sm text-white placeholder:text-white/25 border border-white/10 focus:outline-none focus:border-sage bg-white/5 resize-none"/>
+          <h1 className="font-display text-2xl font-light text-white">Produtos</h1>
+          <p className="font-body text-xs text-white/30 mt-0.5 flex items-center gap-2">
+            {products.length} produto{products.length!==1?'s':''}
+            {savingOrder && <span className="text-sage animate-pulse">· salvando ordem...</span>}
+          </p>
         </div>
-        {/* Preview */}
-        <div className="border border-white/8 p-4" style={{background:'rgba(255,255,255,0.02)'}}>
-          <p className="font-body text-xs text-white/30 mb-3">PREVIEW</p>
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full ${form.bg} flex items-center justify-center font-display ${form.cor}`}>
-              {form.inicial || form.nome?.charAt(0) || '?'}
-            </div>
-            <div>
-              <p className="font-body text-sm text-white">{form.nome||'Nome'}</p>
-              <p className="font-body text-xs text-white/40">{form.cidade||'Cidade'}</p>
-            </div>
+        <button onClick={openNew} className="bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+          NOVO PRODUTO
+        </button>
+      </header>
+
+      <div className="px-6 md:px-8 py-4 border-b border-white/5 space-y-3">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome ou linha..."
+            className="w-full pl-10 pr-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
+            style={{background:'rgba(255,255,255,0.04)'}}/>
+        </div>
+        <div className="flex items-center gap-2">
+          {[{key:'todos',label:`Todos (${products.length})`},{key:'ativos',label:`Ativos (${countAtivos})`},{key:'inativos',label:`Inativos (${countInativos})`}].map(f => (
+            <button key={f.key} onClick={() => setStatusFilter(f.key)}
+              className={`font-body text-xs tracking-widest px-3 py-1.5 border transition-all ${statusFilter===f.key ? 'border-sage text-sage bg-sage/10' : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/50'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="font-display text-3xl text-white/15 italic mb-3">Nenhum produto</p>
+            <p className="font-body text-sm text-white/30">{statusFilter!=='todos'?'Nenhum produto neste filtro.':'Clique em "Novo Produto" para começar.'}</p>
           </div>
-          <p className="font-body text-sm text-white/60 italic mt-3">"{form.texto||'Texto do depoimento...'}"</p>
-        </div>
-      </div>
-      <div className="flex gap-3 mt-6">
-        <button onClick={onClose} className="flex-1 border border-white/15 text-white/50 font-body text-xs tracking-widest py-3">CANCELAR</button>
-        <SaveBtn onClick={save} saving={saving} className="flex-1"/>
-      </div>
-    </Modal>
-  )
-}
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((p, idx) => (
+              <div key={p.id}
+                draggable={!search&&statusFilter==='todos'}
+                onDragStart={()=>handleDragStart(idx)} onDragEnter={()=>handleDragEnter(idx)}
+                onDragEnd={handleDragEnd} onDragOver={e=>e.preventDefault()}
+                className={`flex items-center gap-3 p-4 border transition-all select-none ${dragIndex===idx?'opacity-40':''} ${overIndex===idx&&dragIndex!==idx?'drag-over border-sage/50':'border-white/8 hover:border-white/15'}`}
+                style={{background:'rgba(255,255,255,0.03)',cursor:(!search&&statusFilter==='todos')?'grab':'default'}}>
 
-/* ── ABA: VENDAS ─────────────────────────────────────────── */
-function VendasTab({ showToast }) {
-  const [vendas,   setVendas]   = useState([])
-  const [periodo,  setPeriodo]  = useState('mes')
-  const [loading,  setLoading]  = useState(true)
-  const [expanded, setExpanded] = useState(null)
+                {!search&&statusFilter==='todos' && (
+                  <div className="flex-shrink-0 text-white/20 hover:text-white/50 cursor-grab">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
+                  </div>
+                )}
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.vendas.list({ periodo }).then(setVendas).catch(()=>showToast('Erro ao carregar vendas','error')).finally(()=>setLoading(false))
-  }, [periodo, showToast])
-
-  useEffect(() => { load() }, [load])
-
-  const remove = async (v) => {
-    if (!confirm(`Excluir venda #${v.numero}? O estoque será restaurado.`)) return
-    try {
-      await api.vendas.remove(v.id)
-      setVendas(prev => prev.filter(x => x.id !== v.id))
-      showToast('Venda excluída e estoque restaurado.')
-    } catch(e) { showToast(e.message,'error') }
-  }
-
-  const total = vendas.filter(v=>v.status!=='cancelada').reduce((s,v)=>s+(+v.total),0)
-
-  return (
-    <TabWrapper title="Vendas" subtitle={`${vendas.length} vendas no período`}>
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        {[['hoje','Hoje'],['semana','7 dias'],['mes','Este mês']].map(([val,lbl]) => (
-          <button key={val} onClick={()=>setPeriodo(val)}
-            className={`font-body text-xs tracking-widest px-4 py-2 border transition-all ${periodo===val?'bg-sage border-sage text-white':'border-white/15 text-white/40 hover:border-sage/50'}`}>
-            {lbl}
-          </button>
-        ))}
-        <span className="ml-auto font-display text-xl text-sage">{fmtBRL(total)}</span>
-      </div>
-
-      {loading ? <Loader/> : (
-        <div className="space-y-2">
-          {vendas.map(v => (
-            <div key={v.id} className="border border-white/8 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
-              <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-white/3 transition-colors" onClick={()=>setExpanded(expanded===v.id?null:v.id)}>
-                <span className="font-display text-lg text-white/30 w-12">#{v.numero}</span>
-                <div className="flex-1">
-                  <p className="font-body text-sm text-white">{v.clientes?.nome || <span className="text-white/30">Sem cliente</span>}</p>
-                  <p className="font-body text-xs text-white/30">{fmtDate(v.created_at)} · {v.origem}</p>
+                <div className="w-14 h-14 flex-shrink-0 overflow-hidden" style={{background:'rgba(74,124,89,0.15)'}}>
+                  {p.imagem_url
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover"/>
+                    : <div className="w-full h-full flex items-center justify-center text-sage/40"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M3 21l5-5 4 4 4-5 5 6"/></svg></div>}
                 </div>
-                <span className={`font-body text-xs tracking-widest px-2 py-1 ${v.status==='confirmada'?'bg-green-900/50 text-green-400':'bg-red-900/50 text-red-400'}`}>
-                  {v.status.toUpperCase()}
-                </span>
-                <span className="font-display text-lg text-white">{fmtBRL(v.total)}</span>
-                <ActionBtn title="Excluir" icon="🗑️" onClick={()=>remove(v)} danger/>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-display text-lg font-light text-white truncate">{p.nome}</p>
+                    {p.badge && <span className="font-body text-xs bg-sage/20 text-sage-light px-2 py-0.5">{p.badge}</span>}
+                    {!p.ativo && <span className="font-body text-xs bg-white/5 text-white/30 px-2 py-0.5 border border-white/10">INATIVO</span>}
+                    {p.estoque !== null && p.estoque !== undefined && (
+                      <span className={`font-body text-xs px-2 py-0.5 ${p.estoque<=0 ? 'bg-red-900/30 text-red-400' : p.estoque<=5 ? 'bg-orange-900/30 text-orange-400' : 'bg-sage/10 text-sage/70'}`}>
+                        {p.estoque<=0 ? 'ESGOTADO' : `${p.estoque} un.`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    {p.linha && <span className="font-body text-xs text-white/30 tracking-widest uppercase">{p.linha}</span>}
+                    {p.fragrancia && <span className="font-body text-xs text-white/20">· {p.fragrancia}</span>}
+                  </div>
+                </div>
+
+                <div className="hidden sm:block text-right flex-shrink-0">
+                  <p className="font-display text-xl font-light text-white">{fmtBRL(p.preco)}</p>
+                </div>
+
+                <button onClick={() => toggleAtivo(p)}
+                  className={`flex-shrink-0 w-10 h-5 rounded-full transition-all duration-300 relative ${p.ativo?'bg-sage':'bg-white/15'}`} title={p.ativo?'Desativar':'Ativar'}>
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${p.ativo?'left-5':'left-0.5'}`}/>
+                </button>
+
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Editar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button onClick={() => handleDuplicate(p)} disabled={duplicating===p.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all disabled:opacity-50" title="Duplicar">
+                    {duplicating===p.id ? <div className="w-3 h-3 border border-sage border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>}
+                  </button>
+                  <button onClick={() => setGalleryProd(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Galeria">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  </button>
+                  <button onClick={() => openPriceHistory(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Histórico de preços">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </button>
+                  <button onClick={() => handleDelete(p)} disabled={deleting===p.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50" title="Excluir">
+                    {deleting===p.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>}
+                  </button>
+                </div>
               </div>
-              {expanded === v.id && (
-                <div className="border-t border-white/8 px-6 py-4" style={{background:'rgba(255,255,255,0.02)'}}>
-                  <p className="font-body text-xs tracking-widest text-white/30 mb-3">ITENS</p>
-                  {(v.venda_itens||[]).map(item => (
-                    <div key={item.id} className="flex justify-between font-body text-sm py-1 border-b border-white/5">
-                      <span className="text-white/70">{item.nome_produto} × {item.quantidade}</span>
-                      <span className="text-white">{fmtBRL(item.subtotal)}</span>
-                    </div>
-                  ))}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal produto */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style={{background:'rgba(0,0,0,0.75)',backdropFilter:'blur(4px)'}}>
+          <div className="relative w-full max-w-xl my-8 border border-white/10" style={{background:'#1a1a1a'}}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+              <h2 className="font-display text-2xl font-light text-white">{editingId?'Editar Produto':'Novo Produto'}</h2>
+              <button onClick={closeForm} className="text-white/30 hover:text-white transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <form onSubmit={handleSave} className="px-6 py-6 space-y-5">
+              <FormField label="NOME DO PRODUTO *">
+                <input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} required placeholder="Ex: YOU Glow Sérum" className="admin-input"/>
+              </FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="LINHA">
+                  {(() => {
+                    const linhasExistentes = [...new Set([...LINHAS_DB, ...products.map(p=>p.linha).filter(Boolean)])].sort()
+                    const isNova = form.linha && !linhasExistentes.includes(form.linha)
+                    return (
+                      <div className="space-y-1.5">
+                        <select value={isNova ? '__nova__' : (form.linha || '')} onChange={e => { if (e.target.value==='__nova__') setForm({...form,linha:''}); else setForm({...form,linha:e.target.value}) }} className="admin-input">
+                          {linhasExistentes.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase()+l.slice(1)}</option>)}
+                          <option value="__nova__">+ Nova linha...</option>
+                        </select>
+                        {(isNova || form.linha==='') && (
+                          <input autoFocus value={form.linha==='__nova__'?'':form.linha} onChange={e=>setForm({...form,linha:e.target.value.toLowerCase().trim()})} placeholder="Digite o nome da nova linha" className="admin-input" style={{fontSize:'0.85rem'}}/>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </FormField>
+                <FormField label="BADGE">
+                  <select value={form.badge} onChange={e=>setForm({...form,badge:e.target.value})} className="admin-input">
+                    {BADGES.map(b=><option key={b} value={b}>{b||'— Nenhum'}</option>)}
+                  </select>
+                </FormField>
+              </div>
+              <FormField label="NOTAS / FRAGRÂNCIA">
+                <input value={form.fragrancia} onChange={e=>setForm({...form,fragrancia:e.target.value})} placeholder="Ex: Vitamina C 20%, Ácido Hialurônico & Niacinamida" className="admin-input"/>
+              </FormField>
+              <FormField label="DESCRIÇÃO">
+                <textarea value={form.descricao} onChange={e=>setForm({...form,descricao:e.target.value})} rows={3} placeholder="Descreva o produto..." className="admin-input resize-none"/>
+              </FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="PREÇO (R$) *">
+                  <input type="number" step="0.01" min="0" value={form.preco} onChange={e=>setForm({...form,preco:e.target.value})} required placeholder="189.90" className="admin-input"/>
+                </FormField>
+                <FormField label="ESTOQUE (opcional)">
+                  <input type="number" min="0" value={form.estoque} onChange={e=>setForm({...form,estoque:e.target.value})} placeholder="Vazio = sem controle" className="admin-input"/>
+                </FormField>
+              </div>
+              {form.estoque !== '' && (
+                <div className="border-l-2 border-sage/40 pl-4 py-1">
+                  <p className="font-body text-xs text-white/35 leading-relaxed">
+                    {parseInt(form.estoque)<=0 ? '⚠ Produto aparecerá como "Esgotado" na loja.' : parseInt(form.estoque)<=5 ? `⚠ Aparecerá "Últimas ${form.estoque} unidades" na loja.` : `✓ ${form.estoque} unidades disponíveis.`}
+                  </p>
+                </div>
+              )}
+              <FormField label="URL DA IMAGEM PRINCIPAL">
+                <div className="flex gap-3 items-center">
+                  {form.imagem_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={form.imagem_url} alt="preview" className="w-16 h-16 object-cover border border-white/10 flex-shrink-0"/>
+                  )}
+                  <input value={form.imagem_url} onChange={e=>setForm({...form,imagem_url:e.target.value})} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
+                </div>
+              </FormField>
+              <div className="flex items-center justify-between py-2">
+                <div><p className="font-body text-sm text-white">Produto ativo</p><p className="font-body text-xs text-white/30">Produtos inativos não aparecem na loja</p></div>
+                <button type="button" onClick={()=>setForm({...form,ativo:!form.ativo})} className={`w-12 h-6 rounded-full transition-all duration-300 relative ${form.ativo?'bg-sage':'bg-white/15'}`}>
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${form.ativo?'left-7':'left-1'}`}/>
+                </button>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={closeForm} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-3 hover:border-white/30 transition-all">CANCELAR</button>
+                <button type="submit" disabled={saving} className="flex-1 bg-sage text-white font-body text-xs tracking-widest py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
+                  {saving ? 'SALVANDO...' : editingId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR PRODUTO'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal histórico de preços */}
+      {priceHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.75)',backdropFilter:'blur(4px)'}} onClick={()=>setPriceHistory(null)}>
+          <div className="w-full max-w-md border border-white/10" style={{background:'#1a1a1a'}} onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+              <div><h2 className="font-display text-xl font-light text-white">Histórico de Preços</h2><p className="font-body text-xs text-white/40 mt-0.5">{priceHistory.produto.nome}</p></div>
+              <button onClick={()=>setPriceHistory(null)} className="text-white/30 hover:text-white transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div className="px-6 py-5 max-h-96 overflow-y-auto">
+              <div className="flex items-center justify-between py-3 border-b border-white/8 mb-2">
+                <span className="font-body text-xs text-sage tracking-widest">PREÇO ATUAL</span>
+                <span className="font-display text-2xl font-light text-white">{fmtBRL(priceHistory.produto.preco)}</span>
+              </div>
+              {priceHistory.historico.length===0 ? (
+                <div className="py-8 text-center"><p className="font-body text-sm text-white/30">Nenhuma alteração registrada.</p></div>
+              ) : (
+                <div className="space-y-2 mt-3">
+                  {priceHistory.historico.map((h,i) => {
+                    const subiu = h.preco_novo > h.preco_anterior
+                    const data  = fmtDateTime(h.created_at)
+                    return (
+                      <div key={i} className="flex items-center justify-between py-3 border-b border-white/5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-body text-xs ${subiu?'text-red-400':'text-sage'}`}>{subiu?'▲':'▼'} {fmtBRL(h.preco_novo)}</span>
+                            <span className="font-body text-xs text-white/20">de {fmtBRL(h.preco_anterior)}</span>
+                          </div>
+                          <p className="font-body text-xs text-white/25 mt-0.5">{data}</p>
+                        </div>
+                        <span className={`font-body text-xs px-2 py-0.5 ${subiu?'bg-red-400/10 text-red-400':'bg-sage/10 text-sage'}`}>
+                          {subiu?`+${fmtBRL(h.preco_novo-h.preco_anterior)}`:`-${fmtBRL(h.preco_anterior-h.preco_novo)}`}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
-          ))}
-          {vendas.length === 0 && (
-            <div className="text-center py-16">
-              <p className="font-display text-2xl text-white/20 italic">Nenhuma venda no período.</p>
-            </div>
-          )}
-        </div>
-      )}
-    </TabWrapper>
-  )
-}
-
-/* ── ABA: CLIENTES ───────────────────────────────────────── */
-function ClientesTab({ showToast }) {
-  const [clientes, setClientes] = useState([])
-  const [search,   setSearch]   = useState('')
-  const [loading,  setLoading]  = useState(true)
-  const [selected, setSelected] = useState(null)
-
-  useEffect(() => {
-    setLoading(true)
-    api.clientes.list(search).then(setClientes).catch(()=>showToast('Erro ao carregar clientes','error')).finally(()=>setLoading(false))
-  }, [search, showToast])
-
-  return (
-    <TabWrapper title="Clientes" subtitle={`${clientes.length} clientes cadastrados`}>
-      <input value={search} onChange={e=>setSearch(e.target.value)}
-        placeholder="Buscar por nome, WhatsApp ou cidade..."
-        className="w-full max-w-md px-4 py-2.5 mb-6 font-body text-sm text-white placeholder:text-white/25 border border-white/10 focus:outline-none focus:border-sage bg-white/5"/>
-
-      {loading ? <Loader/> : (
-        <div className="space-y-2">
-          {clientes.map(c => (
-            <div key={c.id} className="flex items-center gap-4 p-4 border border-white/8 hover:border-sage/20 transition-all cursor-pointer"
-              style={{background:'rgba(255,255,255,0.02)'}}
-              onClick={()=>setSelected(selected?.id===c.id?null:c)}>
-              <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center font-display text-sage flex-shrink-0">
-                {c.nome?.charAt(0)?.toUpperCase() || '?'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-body text-sm text-white">{c.nome}</p>
-                <p className="font-body text-xs text-white/30">{c.cidade}{c.estado ? ` — ${c.estado}` : ''} · {c.whatsapp}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-display text-base text-sage">{fmtBRL(c.total_gasto||0)}</p>
-                <p className="font-body text-xs text-white/30">{c.total_compras||0} {c.total_compras===1?'compra':'compras'}</p>
-              </div>
-            </div>
-          ))}
-          {clientes.length === 0 && (
-            <div className="text-center py-16">
-              <p className="font-display text-2xl text-white/20 italic">Nenhum cliente encontrado.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Painel de histórico inline */}
-      {selected && (
-        <div className="mt-6 border border-sage/30 p-6" style={{background:'rgba(74,124,89,0.06)'}}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-display text-xl text-white">{selected.nome}</p>
-              <p className="font-body text-xs text-white/40">{selected.whatsapp}</p>
-            </div>
-            <button onClick={()=>setSelected(null)} className="text-white/30 hover:text-white transition-colors">✕</button>
           </div>
-          <p className="font-body text-xs tracking-widest text-white/30 mb-3">HISTÓRICO DE COMPRAS</p>
-          {(selected.vendas||[]).length === 0 ? (
-            <p className="font-body text-sm text-white/30">Sem compras registradas.</p>
-          ) : (
-            (selected.vendas||[]).map(v => (
-              <div key={v.id} className="flex items-center justify-between py-2 border-b border-white/8">
-                <div>
-                  <p className="font-body text-xs text-white/70">#{v.numero} — {fmtDate(v.created_at)}</p>
-                  <p className="font-body text-xs text-white/30">{(v.venda_itens||[]).map(i=>i.nome_produto).join(', ')}</p>
-                </div>
-                <span className="font-display text-base text-white">{fmtBRL(v.total)}</span>
-              </div>
-            ))
-          )}
         </div>
       )}
-    </TabWrapper>
-  )
-}
 
-/* ════════════════════════════════════════════════════════════
-   COMPONENTES GENÉRICOS
-════════════════════════════════════════════════════════════ */
-function TabWrapper({ title, subtitle, children }) {
-  return (
-    <div className="p-6 md:p-8">
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-light text-white">{title}</h1>
-        {subtitle && <p className="font-body text-sm text-white/30 mt-1">{subtitle}</p>}
-      </div>
-      {children}
+      {/* Modal galeria */}
+      {galleryProd && (
+        <GaleriaModal produto={galleryProd} showToast={showToast} onClose={() => setGalleryProd(null)}/>
+      )}
     </div>
   )
 }
 
-function Field({ label, value, onChange, type='text', placeholder='' }) {
-  return (
-    <div>
-      <label className="font-body text-xs tracking-widest text-white/40 block mb-2">{label.toUpperCase()}</label>
-      <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-4 py-3 font-body text-sm text-white placeholder:text-white/25 border border-white/10 focus:outline-none focus:border-sage bg-white/5 transition-colors"/>
-    </div>
-  )
-}
 
-function SaveBtn({ onClick, saving, className='' }) {
-  return (
-    <button onClick={onClick} disabled={saving}
-      className={`bg-sage text-white font-body text-xs tracking-widest px-6 py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${className}`}>
-      {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
-      {saving ? 'SALVANDO...' : 'SALVAR'}
-    </button>
-  )
-}
+// ══════════════════════════════════════════════════════════════
+//  GALERIA DE IMAGENS
+// ══════════════════════════════════════════════════════════════
+function GaleriaModal({ produto, showToast, onClose }) {
+  const [galeria,   setGaleria]   = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [adding,    setAdding]    = useState(false)
+  const [urlInput,  setUrlInput]  = useState('')
+  const [deleteId,  setDeleteId]  = useState(null)
 
-function ActionBtn({ title, icon, onClick, danger=false }) {
-  return (
-    <button title={title} onClick={e=>{e.stopPropagation();onClick()}}
-      className={`w-8 h-8 flex items-center justify-center text-sm border transition-all hover:scale-110 ${danger ? 'border-red-900/30 hover:border-red-500/50 hover:bg-red-900/20' : 'border-white/8 hover:border-sage/40 hover:bg-sage/10'}`}>
-      {icon}
-    </button>
-  )
-}
+  const fetchGaleria = async () => {
+    setLoading(true)
+    try {
+      const data = await api.products.gallery(produto.id)
+      setGaleria(data||[])
+    } catch { setGaleria([]) }
+    setLoading(false)
+  }
 
-function Modal({ title, onClose, children, size='md' }) {
-  const maxW = size === 'lg' ? 'max-w-2xl' : 'max-w-lg'
+  useEffect(() => { fetchGaleria() }, [produto.id])
+
+  const handleAdd = async () => {
+    if (!urlInput.trim()) return showToast('Cole uma URL de imagem','error')
+    setAdding(true)
+    try {
+      await api.adminProducts.addGallery(produto.id, urlInput.trim())
+      showToast('Foto adicionada!')
+      setUrlInput('')
+      fetchGaleria()
+    } catch (err) { showToast(err.message||'Erro ao adicionar','error') }
+    finally { setAdding(false) }
+  }
+
+  const handleDelete = async (id) => {
+    setDeleteId(id)
+    try {
+      await api.adminProducts.removeGallery(produto.id, id)
+      showToast('Foto removida!'); fetchGaleria()
+    } catch { showToast('Erro ao remover foto','error') }
+    finally { setDeleteId(null) }
+  }
+
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(4px)'}}>
-      <div className={`w-full ${maxW} border border-white/10 overflow-y-auto max-h-[90vh]`} style={{background:'#0f0f0f'}}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 sticky top-0" style={{background:'#0f0f0f'}}>
-          <h2 className="font-display text-xl font-light text-white">{title}</h2>
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors text-xl leading-none">✕</button>
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      style={{ background:'rgba(0,0,0,0.8)', backdropFilter:'blur(4px)' }} onClick={onClose}>
+      <div className="w-full max-w-2xl my-8 border border-white/10" style={{ background:'#1a1a1a' }} onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+          <div>
+            <h2 className="font-display text-xl font-light text-white">Galeria de Imagens</h2>
+            <p className="font-body text-xs text-white/40 mt-0.5">{produto.nome} · {galeria.length} foto{galeria.length!==1?'s':''} extras</p>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="px-6 py-5">
+          <div className="border-l-2 border-sage/40 pl-4 py-1 mb-5">
+            <p className="font-body text-xs text-white/40 leading-relaxed">Cole a URL de uma imagem pública para adicionar à galeria do produto.</p>
+          </div>
+          <div className="flex gap-3 mb-6">
+            <input value={urlInput} onChange={e=>setUrlInput(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="admin-input flex-1"/>
+            <button onClick={handleAdd} disabled={adding} className="font-body text-xs tracking-widest bg-sage text-white px-5 py-2.5 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center gap-2 flex-shrink-0">
+              {adding ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>}
+              ADD
+            </button>
+          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+          ) : galeria.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-white/10">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="1" opacity=".4" className="mx-auto mb-3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <p className="font-body text-sm text-white/30">Nenhuma foto extra cadastrada.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {galeria.map((img, i) => (
+                <div key={img.id} className="relative group aspect-square border border-white/10 overflow-hidden" style={{ background:'rgba(74,124,89,0.1)' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.imagem_url} alt={`Foto ${i+1}`} className="w-full h-full object-contain p-1"/>
+                  <div className="absolute inset-0 bg-obsidian/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button onClick={() => handleDelete(img.id)} disabled={deleteId===img.id}
+                      className="w-9 h-9 bg-red-700 flex items-center justify-center hover:bg-red-800 transition-all disabled:opacity-50">
+                      {deleteId===img.id
+                        ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
+                    </button>
+                  </div>
+                  <div className="absolute bottom-1 right-1 bg-obsidian/60 text-white font-body text-xs px-1.5 py-0.5 leading-none">{i+1}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-function Loader() {
+
+// ══════════════════════════════════════════════════════════════
+//  ABA D — DEPOIMENTOS
+// ══════════════════════════════════════════════════════════════
+const COR_OPTIONS = [
+  { cor:'text-sage',       bg:'bg-sage/30',    label:'Verde' },
+  { cor:'text-blush',      bg:'bg-blush/30',   label:'Rosa' },
+  { cor:'text-sage-light', bg:'bg-sage/20',    label:'Verde claro' },
+  { cor:'text-white',      bg:'bg-white/20',   label:'Branco' },
+]
+
+function DepoimentosSection({ showToast }) {
+  const [deps,       setDeps]       = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [showForm,   setShowForm]   = useState(false)
+  const [editingId,  setEditingId]  = useState(null)
+  const [form,       setForm]       = useState(EMPTY_DEP)
+  const [saving,     setSaving]     = useState(false)
+  const [deleteId,   setDeleteId]   = useState(null)
+  const [confirmDel, setConfirmDel] = useState(null)
+
+  const fetchDeps = async () => {
+    setLoading(true)
+    try { const data = await api.depoimentos.adminList(); setDeps(data||[]) } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchDeps() }, [])
+
+  const openNew  = () => { setEditingId(null); setForm(EMPTY_DEP); setShowForm(true) }
+  const openEdit = (d) => {
+    setEditingId(d.id)
+    setForm({ nome:d.nome||'', cidade:d.cidade||'', texto:d.texto||'', inicial:d.inicial||'', cor:d.cor||'text-sage', bg:d.bg||'bg-sage/30', ativo:d.ativo!==false })
+    setShowForm(true)
+  }
+  const closeForm = () => { setShowForm(false); setEditingId(null) }
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    if (!form.nome.trim()) return showToast('Nome é obrigatório','error')
+    if (!form.texto.trim()) return showToast('Depoimento é obrigatório','error')
+    setSaving(true)
+    try {
+      const payload = { nome:form.nome.trim(), cidade:form.cidade.trim()||null, texto:form.texto.trim(), inicial:form.inicial.trim()||form.nome.trim().charAt(0).toUpperCase(), cor:form.cor, bg:form.bg, ativo:form.ativo }
+      if (editingId) {
+        await api.depoimentos.update(editingId, payload)
+        showToast('Depoimento atualizado!')
+      } else {
+        await api.depoimentos.create({...payload, ordem:deps.length})
+        showToast('Depoimento adicionado!')
+      }
+      closeForm(); fetchDeps()
+    } catch (err) { showToast(err.message||'Erro','error') }
+    finally { setSaving(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDel) return
+    setDeleteId(confirmDel.id)
+    try {
+      await api.depoimentos.remove(confirmDel.id)
+      showToast('Depoimento excluído!'); setConfirmDel(null); fetchDeps()
+    } catch { showToast('Erro ao excluir','error') }
+    finally { setDeleteId(null) }
+  }
+
+  const toggleAtivo = async (d) => {
+    try { await api.depoimentos.toggle(d.id); fetchDeps() } catch {}
+  }
+
+  if (loading) return <SectionLoader/>
   return (
-    <div className="flex items-center justify-center py-16">
-      <div className="w-8 h-8 border-2 border-sage/30 border-t-sage rounded-full animate-spin"/>
+    <div className="flex-1 flex flex-col min-h-0">
+      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-white/8">
+        <div>
+          <h1 className="font-display text-2xl font-light text-white">Depoimentos</h1>
+          <p className="font-body text-xs text-white/30 mt-0.5">Gerencie os depoimentos exibidos na loja</p>
+        </div>
+        <button onClick={openNew} className="bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+          NOVO DEPOIMENTO
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
+        {deps.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="font-display text-3xl text-white/15 italic mb-3">Nenhum depoimento</p>
+            <p className="font-body text-sm text-white/30">Os depoimentos padrão serão exibidos enquanto não houver cadastros.</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-w-2xl">
+            {deps.map(d => (
+              <div key={d.id} className="flex items-start gap-4 p-5 border border-white/8 hover:border-white/15 transition-all" style={{background:'rgba(255,255,255,0.03)'}}>
+                <div className={`w-10 h-10 rounded-full ${d.bg||'bg-sage/30'} flex items-center justify-center flex-shrink-0`}>
+                  <span className={`font-display ${d.cor||'text-sage'} text-lg`}>{d.inicial || d.nome?.charAt(0)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="font-body text-sm text-white font-medium">{d.nome}</p>
+                    {d.cidade && <p className="font-body text-xs text-white/30">{d.cidade}</p>}
+                    {!d.ativo && <span className="font-body text-xs bg-white/5 text-white/30 px-2 py-0.5 border border-white/10">INATIVO</span>}
+                  </div>
+                  <p className="font-display text-sm font-light text-white/60 italic leading-relaxed line-clamp-2">"{d.texto}"</p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button onClick={() => toggleAtivo(d)} className={`w-9 h-5 rounded-full transition-all duration-300 relative ${d.ativo?'bg-sage':'bg-white/15'}`} title={d.ativo?'Desativar':'Ativar'}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${d.ativo?'left-4':'left-0.5'}`}/>
+                  </button>
+                  <button onClick={() => openEdit(d)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button onClick={() => setConfirmDel(d)} disabled={deleteId===d.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50">
+                    {deleteId===d.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style={{background:'rgba(0,0,0,0.75)',backdropFilter:'blur(4px)'}}>
+          <div className="relative w-full max-w-lg my-8 border border-white/10" style={{background:'#1a1a1a'}}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+              <h2 className="font-display text-xl font-light text-white">{editingId?'Editar Depoimento':'Novo Depoimento'}</h2>
+              <button onClick={closeForm} className="text-white/30 hover:text-white transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+            <form onSubmit={handleSave} className="px-6 py-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="NOME *"><input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} required placeholder="Ex: Fernanda Lima" className="admin-input"/></FormField>
+                <FormField label="CIDADE"><input value={form.cidade} onChange={e=>setForm({...form,cidade:e.target.value})} placeholder="Ex: Fortaleza, CE" className="admin-input"/></FormField>
+              </div>
+              <FormField label="DEPOIMENTO *">
+                <textarea value={form.texto} onChange={e=>setForm({...form,texto:e.target.value})} required rows={4} placeholder="O que o cliente disse..." className="admin-input resize-none"/>
+              </FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="INICIAL DO AVATAR">
+                  <input value={form.inicial} onChange={e=>setForm({...form,inicial:e.target.value.toUpperCase().slice(0,1)})} placeholder="Ex: F" maxLength={1} className="admin-input"/>
+                </FormField>
+                <FormField label="COR DO AVATAR">
+                  <div className="flex gap-2 pt-1">
+                    {COR_OPTIONS.map(opt => (
+                      <button key={opt.cor} type="button" onClick={() => setForm({...form,cor:opt.cor,bg:opt.bg})}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${form.cor===opt.cor?'border-white scale-110':'border-transparent'} ${opt.bg}`}
+                        title={opt.label}>
+                        <span className={`font-display text-sm ${opt.cor}`}>A</span>
+                      </button>
+                    ))}
+                  </div>
+                </FormField>
+              </div>
+              <div className="border border-white/8 p-4 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
+                <p className="font-body text-xs text-white/30 tracking-widest mb-3">PREVIEW</p>
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className={`w-10 h-10 rounded-full ${form.bg} flex items-center justify-center flex-shrink-0`}>
+                    <span className={`font-display ${form.cor} text-lg`}>{form.inicial || form.nome?.charAt(0) || '?'}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-body text-sm text-white font-medium">{form.nome || 'Nome do cliente'}</p>
+                    <p className="font-body text-xs text-white/40">{form.cidade || 'Cidade, Estado'}</p>
+                    <p className="font-display text-sm font-light text-white/60 italic mt-1">"{form.texto || 'Depoimento aparecerá aqui...'}"</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div><p className="font-body text-sm text-white">Depoimento ativo</p><p className="font-body text-xs text-white/30">Inativos não aparecem na loja</p></div>
+                <button type="button" onClick={() => setForm({...form,ativo:!form.ativo})} className={`w-12 h-6 rounded-full transition-all duration-300 relative ${form.ativo?'bg-sage':'bg-white/15'}`}>
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${form.ativo?'left-7':'left-1'}`}/>
+                </button>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={closeForm} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-3 hover:border-white/30 transition-all">CANCELAR</button>
+                <button type="submit" disabled={saving} className="flex-1 bg-sage text-white font-body text-xs tracking-widest py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
+                  {saving ? 'SALVANDO...' : editingId ? 'SALVAR' : 'ADICIONAR'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30" style={{background:'#1a0f0f',minWidth:'320px',maxWidth:'440px'}}>
+          <div className="px-5 py-4">
+            <p className="font-body text-sm text-white font-medium mb-1">Excluir depoimento?</p>
+            <p className="font-body text-xs text-white/50 mb-4">De <span className="text-white/70">{confirmDel.nome}</span> — esta ação não pode ser desfeita.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDel(null)} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-2.5 hover:border-white/30 transition-all">CANCELAR</button>
+              <button onClick={handleDelete} className="flex-1 bg-red-700 text-white font-body text-xs tracking-widest py-2.5 hover:bg-red-800 transition-all">SIM, EXCLUIR</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  ABA E — VENDAS
+// ══════════════════════════════════════════════════════════════
+const PERIODOS = [
+  { key:'hoje',   label:'Hoje' },
+  { key:'semana', label:'Semana' },
+  { key:'mes',    label:'Mês' },
+  { key:'custom', label:'Período' },
+]
+
+function VendasSection({ showToast, setActiveTab }) {
+  const [vendas,      setVendas]      = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [periodo,     setPeriodo]     = useState('mes')
+  const [dataInicio,  setDataInicio]  = useState('')
+  const [dataFim,     setDataFim]     = useState('')
+  const [detailVenda, setDetailVenda] = useState(null)
+  const [deleteId,    setDeleteId]    = useState(null)
+  const [confirmDel,  setConfirmDel]  = useState(null)
+
+  const getDateRange = () => {
+    const now   = new Date()
+    const today = now.toISOString().split('T')[0]
+    if (periodo==='hoje')   return { from:today, to:today }
+    if (periodo==='semana') { const d=new Date(now); d.setDate(d.getDate()-7); return { from:d.toISOString().split('T')[0], to:today } }
+    if (periodo==='mes')    { const d=new Date(now); d.setDate(1); return { from:d.toISOString().split('T')[0], to:today } }
+    return { from:dataInicio, to:dataFim }
+  }
+
+  const fetchVendas = async () => {
+    setLoading(true)
+    try {
+      const { from, to } = getDateRange()
+      const params = {}
+      if (from) params.from = from
+      if (to)   params.to   = to
+      const data = await api.vendas.list(params)
+      setVendas(data||[])
+    } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchVendas() }, [periodo, dataInicio, dataFim])
+
+  const totalPeriodo = vendas.filter(v => v.status !== 'cancelada').reduce((s,v) => s + Number(v.total), 0)
+
+  const handleDelete = async () => {
+    if (!confirmDel) return
+    setDeleteId(confirmDel.id)
+    try {
+      await api.vendas.remove(confirmDel.id)
+      showToast('Venda excluída!'); setConfirmDel(null); fetchVendas()
+    } catch (err) { showToast(err.message||'Erro ao excluir','error') }
+    finally { setDeleteId(null) }
+  }
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-white/8 flex-wrap gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-light text-white">Vendas</h1>
+          <p className="font-body text-xs text-white/30 mt-0.5">{vendas.length} venda{vendas.length!==1?'s':''} · Total: <span className="text-sage">{fmtBRL(totalPeriodo)}</span></p>
+        </div>
+      </header>
+
+      <div className="px-6 md:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap">
+        {PERIODOS.map(p => (
+          <button key={p.key} onClick={() => setPeriodo(p.key)}
+            className={`font-body text-xs tracking-widest px-3 py-1.5 border transition-all ${periodo===p.key ? 'border-sage text-sage bg-sage/10' : 'border-white/10 text-white/30 hover:border-white/30'}`}>
+            {p.label}
+          </button>
+        ))}
+        {periodo==='custom' && (
+          <div className="flex items-center gap-2 ml-2">
+            <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage" style={{background:'rgba(255,255,255,0.05)'}}/>
+            <span className="text-white/30 text-xs">até</span>
+            <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage" style={{background:'rgba(255,255,255,0.05)'}}/>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
+        {loading ? <SectionLoader/> : vendas.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="font-display text-3xl text-white/15 italic mb-2">Nenhuma venda</p>
+            <p className="font-body text-sm text-white/30">Altere o período ou aguarde novos pedidos.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {vendas.map(v => (
+              <div key={v.id}>
+                <div className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/15 transition-all cursor-pointer"
+                  style={{background:'rgba(255,255,255,0.02)'}}
+                  onClick={() => setDetailVenda(detailVenda?.id === v.id ? null : v)}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-body text-xs text-white/30">#{v.numero}</span>
+                      <span className="font-body text-sm text-white font-medium">{v.cliente_nome || 'Cliente não informado'}</span>
+                      <span className={`font-body text-xs px-2 py-0.5 ${v.status==='cancelada' ? 'bg-red-900/30 text-red-400' : 'bg-sage/10 text-sage'}`}>{v.status}</span>
+                    </div>
+                    <p className="font-body text-xs text-white/30 mt-0.5">
+                      {fmtDateTime(v.created_at)}
+                      <span className="mx-1.5 text-white/15">·</span>
+                      {(v.itens||[]).map(i => i.nome_produto).join(', ').substring(0,60)}
+                      <span className="mx-1.5 text-white/15">·</span>
+                      {(v.itens||[]).length} item{(v.itens||[]).length!==1?'s':''}
+                    </p>
+                  </div>
+                  <p className="font-display text-xl font-light text-white flex-shrink-0">{fmtBRL(v.total)}</p>
+                  <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
+                    <button onClick={() => setConfirmDel(v)} disabled={deleteId===v.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all">
+                      {deleteId===v.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
+                    </button>
+                  </div>
+                </div>
+                {detailVenda?.id === v.id && (
+                  <div className="border border-white/8 border-t-0 px-5 py-4" style={{background:'rgba(74,124,89,0.04)'}}>
+                    {v.cliente_whatsapp && <p className="font-body text-xs text-white/40 mb-3">WhatsApp: <span className="text-white/60">{v.cliente_whatsapp}</span></p>}
+                    {v.cliente_cidade && <p className="font-body text-xs text-white/40 mb-3">Cidade: <span className="text-white/60">{v.cliente_cidade}</span></p>}
+                    <div className="space-y-2">
+                      {(v.itens||[]).map((i,idx) => (
+                        <div key={idx} className="flex justify-between font-body text-xs text-white/60">
+                          <span>{i.nome_produto} <span className="text-white/30">x{i.quantidade}</span></span>
+                          <span>{fmtBRL(i.subtotal)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between font-body text-sm text-white mt-3 pt-3 border-t border-white/8">
+                      <span>Total</span><span className="font-display text-lg">{fmtBRL(v.total)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {confirmDel && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 min-w-[320px] max-w-[440px]" style={{background:'#1a0f0f'}}>
+          <div className="px-5 py-4">
+            <p className="font-body text-sm text-white font-medium mb-1">Excluir venda #{confirmDel.numero}?</p>
+            <p className="font-body text-xs text-white/50 mb-4">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDel(null)} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-2.5 hover:border-white/30 transition-all">CANCELAR</button>
+              <button onClick={handleDelete} className="flex-1 bg-red-700 text-white font-body text-xs tracking-widest py-2.5 hover:bg-red-800 transition-all">SIM, EXCLUIR</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  ABA F — CLIENTES
+// ══════════════════════════════════════════════════════════════
+function ClientesSection({ showToast }) {
+  const [clientes,   setClientes]   = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [search,     setSearch]     = useState('')
+  const [showForm,   setShowForm]   = useState(false)
+  const [editingId,  setEditingId]  = useState(null)
+  const [form,       setForm]       = useState({ nome:'', cidade:'', estado:'', whatsapp:'' })
+  const [saving,     setSaving]     = useState(false)
+  const [deleteId,   setDeleteId]   = useState(null)
+  const [confirmDel, setConfirmDel] = useState(null)
+  const [historico,  setHistorico]  = useState(null)
+  const [histLoading,setHistLoading]= useState(false)
+
+  const fetchClientes = async () => {
+    setLoading(true)
+    try { const data = await api.clientes.list(search); setClientes(data||[]) } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchClientes() }, [])
+
+  const filtered = clientes.filter(c =>
+    c.nome?.toLowerCase().includes(search.toLowerCase()) ||
+    c.whatsapp?.includes(search.replace(/\D/g,'')) ||
+    c.cidade?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const openHistorico = async (c) => {
+    setHistorico({ cliente:c, vendas:[], stats:null })
+    setHistLoading(true)
+    try {
+      const vendas = await api.clientes.historico(c.id)
+      const v = vendas||[]
+      const confirmadas = v.filter(x => x.status !== 'cancelada')
+      const stats = {
+        totalConfirm:   confirmadas.length,
+        totalCancelada: v.filter(x => x.status==='cancelada').length,
+        totalGasto:     confirmadas.reduce((s,x) => s+Number(x.total), 0),
+        ticketMedio:    confirmadas.length ? confirmadas.reduce((s,x) => s+Number(x.total),0)/confirmadas.length : 0,
+        primeiraCompra: v.length ? v[v.length-1].created_at : null,
+        ultimaCompra:   v.length ? v[0].created_at : null,
+      }
+      setHistorico({ cliente:c, vendas:v, stats })
+    } catch {}
+    setHistLoading(false)
+  }
+
+  const openNew  = () => { setEditingId(null); setForm({ nome:'', cidade:'', estado:'', whatsapp:'' }); setShowForm(true) }
+  const openEdit = (c, e) => { e.stopPropagation(); setEditingId(c.id); setForm({ nome:c.nome||'', cidade:c.cidade||'', estado:c.estado||'', whatsapp:c.whatsapp||'' }); setShowForm(true) }
+
+  const handleSave = async () => {
+    if (!form.nome.trim()) return showToast('Nome é obrigatório','error')
+    if (!form.whatsapp.trim()) return showToast('WhatsApp é obrigatório','error')
+    setSaving(true)
+    try {
+      const payload = { nome:form.nome.trim(), cidade:form.cidade.trim(), estado:form.estado.trim().toUpperCase(), whatsapp:form.whatsapp }
+      if (editingId) {
+        await api.clientes.update(editingId, payload)
+        showToast('Cliente atualizado!')
+      } else {
+        await api.clientes.create(payload)
+        showToast('Cliente cadastrado!')
+      }
+      setShowForm(false); fetchClientes()
+    } catch (err) { showToast(err.message||'Erro','error') }
+    finally { setSaving(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDel) return
+    setDeleteId(confirmDel.id)
+    try {
+      await api.clientes.remove(confirmDel.id)
+      showToast('Cliente excluído!')
+      if (historico?.cliente?.id===confirmDel.id) setHistorico(null)
+      setConfirmDel(null); fetchClientes()
+    } catch (err) { showToast(err.message||'Erro ao excluir','error') }
+    finally { setDeleteId(null) }
+  }
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-white/8 flex-wrap gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-light text-white">Clientes</h1>
+          <p className="font-body text-xs text-white/30 mt-0.5">{filtered.length} cliente{filtered.length!==1?'s':''}</p>
+        </div>
+        <button onClick={openNew} className="bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+          NOVO CLIENTE
+        </button>
+      </header>
+
+      <div className="px-6 md:px-8 py-4 border-b border-white/5">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cidade ou WhatsApp..."
+            className="w-full pl-10 pr-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
+            style={{background:'rgba(255,255,255,0.04)'}}/>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
+        {loading ? <SectionLoader/> : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="font-display text-3xl text-white/15 italic mb-2">Nenhum cliente</p>
+            <p className="font-body text-sm text-white/30">{search ? 'Nenhum resultado para essa busca.' : 'Clientes são criados automaticamente ao receber pedidos.'}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map(c => (
+              <div key={c.id}
+                className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/20 transition-all cursor-pointer group"
+                style={{background:'rgba(255,255,255,0.02)'}}
+                onClick={() => openHistorico(c)}>
+                <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/30 transition-colors">
+                  <span className="font-display text-sage text-lg">{c.nome?.charAt(0).toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-body text-sm text-white font-medium group-hover:text-sage transition-colors">{c.nome}</p>
+                    {c.total_compras > 0 && <span className="font-body text-xs px-1.5 py-0.5 bg-sage/10 text-sage">{c.total_compras} compra{c.total_compras!==1?'s':''}</span>}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    {c.cidade && <span className="font-body text-xs text-white/30">{c.cidade}{c.estado ? ', '+c.estado.toUpperCase() : ''}</span>}
+                    {c.whatsapp && <span className="font-body text-xs text-white/30">{c.whatsapp}</span>}
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0 hidden sm:block mr-2">
+                  <p className="font-body text-xs text-white/30">cadastro {fmtDate(c.created_at)}</p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
+                  <button onClick={() => openHistorico(c)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Ver histórico">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </button>
+                  <button onClick={(e) => openEdit(c,e)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Editar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setConfirmDel(c) }} disabled={deleteId===c.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all" title="Excluir">
+                    {deleteId===c.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal histórico */}
+      {historico && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(6px)'}} onClick={() => setHistorico(null)}>
+          <div className="w-full max-w-xl border border-white/10 max-h-[88vh] flex flex-col" style={{background:'#141414'}} onClick={e=>e.stopPropagation()}>
+            <div className="flex items-start justify-between px-6 py-5 border-b border-white/8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0">
+                  <span className="font-display text-sage text-lg">{historico.cliente.nome?.charAt(0).toUpperCase()}</span>
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-light text-white">{historico.cliente.nome}</h2>
+                  <p className="font-body text-xs text-white/40 mt-0.5">
+                    {historico.cliente.cidade && `${historico.cliente.cidade}${historico.cliente.estado ? ', '+historico.cliente.estado.toUpperCase() : ''} · `}
+                    {historico.cliente.whatsapp}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setHistorico(null)} className="text-white/30 hover:text-white transition-colors mt-1">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            {histLoading ? (
+              <div className="flex-1 flex items-center justify-center py-16"><div className="w-8 h-8 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+            ) : (
+              <>
+                {historico.stats && (
+                  <div className="grid grid-cols-4 gap-0 border-b border-white/8">
+                    {[
+                      { label:'COMPRAS',     val: historico.stats.totalConfirm },
+                      { label:'TOTAL GASTO', val: fmtBRL(historico.stats.totalGasto) },
+                      { label:'TICKET MÉDIO',val: fmtBRL(historico.stats.ticketMedio) },
+                      { label:'CANCELADAS',  val: historico.stats.totalCancelada },
+                    ].map((s,i) => (
+                      <div key={i} className="px-4 py-3 border-r border-white/5 last:border-r-0 text-center">
+                        <p className="font-display text-lg font-light text-white">{s.val}</p>
+                        <p className="font-body text-xs text-white/30 tracking-widest mt-0.5">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex-1 overflow-y-auto px-6 py-5">
+                  {historico.vendas.length === 0 ? (
+                    <p className="font-body text-sm text-white/30 text-center py-8">Nenhuma compra registrada.</p>
+                  ) : historico.vendas.map((v,i) => (
+                    <div key={i} className="mb-4 border border-white/8 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5" style={{background:'rgba(255,255,255,0.03)'}}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-body text-xs text-white/30">#{v.numero}</span>
+                          <span className="font-body text-xs text-white/50">{fmtDateTime(v.created_at)}</span>
+                        </div>
+                        <span className={`font-body text-xs px-2 py-0.5 ${v.status==='cancelada'?'bg-red-900/30 text-red-400':'bg-sage/10 text-sage'}`}>{v.status}</span>
+                      </div>
+                      <div className="px-4 py-3 space-y-2">
+                        {(v.itens||[]).map((it,j) => (
+                          <div key={j} className="flex justify-between font-body text-xs text-white/70">
+                            <span>{it.nome_produto} <span className="text-white/40">×{it.quantidade}</span></span>
+                            <span>{fmtBRL(it.subtotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center px-4 py-3 border-t border-white/5" style={{background:'rgba(255,255,255,0.03)'}}>
+                        <span className="font-body text-xs text-white/40 tracking-widest">TOTAL</span>
+                        <span className="font-display text-lg font-light text-white">{fmtBRL(v.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal form cliente */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(6px)'}}>
+          <div className="w-full max-w-md border border-white/10" style={{background:'#141414'}}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+              <h2 className="font-display text-xl font-light text-white">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</h2>
+              <button onClick={() => setShowForm(false)} className="text-white/30 hover:text-white transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className="px-6 py-6 space-y-4">
+              <FormField label="NOME *"><input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} placeholder="Nome completo" className="admin-input"/></FormField>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="CIDADE"><input value={form.cidade} onChange={e=>setForm({...form,cidade:e.target.value})} placeholder="Ex: Quixadá" className="admin-input"/></FormField>
+                <FormField label="ESTADO"><input value={form.estado} onChange={e=>setForm({...form,estado:e.target.value.toUpperCase().slice(0,2)})} placeholder="CE" maxLength={2} className="admin-input uppercase"/></FormField>
+              </div>
+              <FormField label="WHATSAPP *"><input value={form.whatsapp} onChange={e=>setForm({...form,whatsapp:maskPhone(e.target.value)})} placeholder="(88) 99999-9999" className="admin-input"/></FormField>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-3 hover:border-white/30 transition-all">CANCELAR</button>
+                <button type="button" onClick={handleSave} disabled={saving} className="flex-1 bg-sage text-white font-body text-xs tracking-widest py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
+                  {saving ? 'SALVANDO...' : editingId ? 'SALVAR' : 'CADASTRAR'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 min-w-[320px] max-w-[440px]" style={{background:'#1a0f0f'}}>
+          <div className="px-5 py-4">
+            <p className="font-body text-sm text-white font-medium mb-1">Excluir cliente?</p>
+            <p className="font-body text-xs text-white/50 mb-4"><span className="text-white/70">{confirmDel.nome}</span> — as vendas permanecerão no histórico.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDel(null)} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-2.5 hover:border-white/30 transition-all">CANCELAR</button>
+              <button onClick={handleDelete} className="flex-1 bg-red-700 text-white font-body text-xs tracking-widest py-2.5 hover:bg-red-800 transition-all">SIM, EXCLUIR</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  UTILITÁRIOS
+// ══════════════════════════════════════════════════════════════
+function DeleteConfirmToast({ produto, onConfirm, onCancel }) {
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30" style={{background:'#1a0f0f',minWidth:'320px',maxWidth:'440px'}}>
+      <div className="px-5 py-4">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-red-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-body text-sm text-white font-medium">Excluir produto?</p>
+            <p className="font-body text-xs text-white/50 mt-0.5"><span className="text-white/70">"{produto.nome}"</span> será removido permanentemente.</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-2.5 hover:border-white/30 transition-all">CANCELAR</button>
+          <button onClick={onConfirm} className="flex-1 bg-red-700 text-white font-body text-xs tracking-widest py-2.5 hover:bg-red-800 transition-all">SIM, EXCLUIR</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SidebarLink({ active, onClick, icon, label }) {
+  return (
+    <button onClick={onClick} className={`admin-sidebar-link w-full text-left ${active?'active':''}`}>
+      {icon}{label}
+    </button>
+  )
+}
+
+function SectionLoader() {
+  return <div className="flex-1 flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+}
+
+function FormField({ label, children }) {
+  return <div><label className="font-body text-xs tracking-widest text-white/40 block mb-2">{label}</label>{children}</div>
 }
