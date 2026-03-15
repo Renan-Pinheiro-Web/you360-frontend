@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://you360oficial.com.br/api/:path*"
+      "destination": "http://82.25.73.36/api/:path*"
     },
     {
       "source": "/uploads/:path*",
-      "destination": "https://you360oficial.com.br/uploads/:path*"
+      "destination": "http://82.25.73.36/uploads/:path*"
     }
   ]
 }
