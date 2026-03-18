@@ -115,12 +115,12 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
-          {activeTab === 'hero'        && <HeroSection      showToast={showToast}/>}
-          {activeTab === 'linhas'      && <LinhasSection     showToast={showToast}/>}
-          {activeTab === 'produtos'    && <ProdutosSection   showToast={showToast} setDeleteConfirm={setDeleteConfirm}/>}
+          {activeTab === 'hero'        && <HeroSection       showToast={showToast}/>}
+          {activeTab === 'linhas'      && <LinhasSection      showToast={showToast}/>}
+          {activeTab === 'produtos'    && <ProdutosSection    showToast={showToast} setDeleteConfirm={setDeleteConfirm}/>}
           {activeTab === 'depoimentos' && <DepoimentosSection showToast={showToast}/>}
-          {activeTab === 'vendas'      && <VendasSection     showToast={showToast} setActiveTab={setActiveTab}/>}
-          {activeTab === 'clientes'    && <ClientesSection   showToast={showToast}/>}
+          {activeTab === 'vendas'      && <VendasSection      showToast={showToast} setActiveTab={setActiveTab}/>}
+          {activeTab === 'clientes'    && <ClientesSection    showToast={showToast}/>}
         </main>
       </div>
 
@@ -168,16 +168,16 @@ export default function AdminPage() {
 
 
 // ══════════════════════════════════════════════════════════════
-//  UPLOAD HELPER — reutilizado por Hero, Linhas e Produtos
+//  UPLOAD BUTTON — componente reutilizável
 // ══════════════════════════════════════════════════════════════
-function UploadButton({ onUpload, uploading }) {
+function UploadButton({ onUpload, uploading, showToast }) {
   const fileRef = useRef()
   const handleChange = async (e) => {
     const file = e.target.files[0]
     if (!file) return
     const tiposPermitidos = ['image/jpeg','image/png','image/webp','image/gif']
-    if (!tiposPermitidos.includes(file.type)) { alert('Formato inválido. Use JPG, PNG ou WEBP.'); return }
-    if (file.size > 5 * 1024 * 1024) { alert('Imagem muito grande. Máximo 5MB.'); return }
+    if (!tiposPermitidos.includes(file.type)) { showToast('Formato inválido. Use JPG, PNG ou WEBP.','error'); return }
+    if (file.size > 5 * 1024 * 1024) { showToast('Imagem muito grande. Máximo 5MB.','error'); return }
     await onUpload(file)
     e.target.value = ''
   }
@@ -218,7 +218,6 @@ function HeroSection({ showToast }) {
     }).catch(() => setLoading(false))
   }, [])
 
-  // MELHORIA — upload na seção Hero
   const handleUpload = async (file) => {
     setUploading(true)
     try {
@@ -234,8 +233,8 @@ function HeroSection({ showToast }) {
     e.preventDefault(); setSaving(true)
     try {
       await api.hero.update({
-        nome: form.nome.trim()||null,
-        preco: form.preco ? parseFloat(form.preco) : null,
+        nome:       form.nome.trim()||null,
+        preco:      form.preco ? parseFloat(form.preco) : null,
         imagem_url: urlInput.trim()||null,
       })
       setImgPreview(urlInput.trim())
@@ -264,14 +263,9 @@ function HeroSection({ showToast }) {
               </div>
               <div className="flex-1 space-y-2">
                 <p className="font-body text-xs text-white/40 tracking-widest">URL DA IMAGEM</p>
-                <input
-                  value={urlInput}
-                  onChange={e => { setUrlInput(e.target.value); setImgPreview(e.target.value) }}
-                  placeholder="https://exemplo.com/imagem.jpg"
-                  className="admin-input"
-                />
+                <input value={urlInput} onChange={e => { setUrlInput(e.target.value); setImgPreview(e.target.value) }} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
                 <div className="flex items-center gap-3">
-                  <UploadButton onUpload={handleUpload} uploading={uploading}/>
+                  <UploadButton onUpload={handleUpload} uploading={uploading} showToast={showToast}/>
                   <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
                 </div>
                 {imgPreview && !clearConfirm && (
@@ -312,10 +306,10 @@ function HeroSection({ showToast }) {
 const LINHA_BG_LABELS = ['Linha 1 — Fundo verde/rosado','Linha 2 — Fundo escuro · Destaque','Linha 3 — Fundo rosado']
 
 function LinhasSection({ showToast }) {
-  const [loading,    setLoading]    = useState(true)
-  const [saving,     setSaving]     = useState(null)
-  const [uploading,  setUploading]  = useState([false, false, false])
-  const [forms,      setForms]      = useState([
+  const [loading,   setLoading]   = useState(true)
+  const [saving,    setSaving]    = useState(null)
+  const [uploading, setUploading] = useState([false,false,false])
+  const [forms,     setForms]     = useState([
     {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
     {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
     {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
@@ -335,13 +329,11 @@ function LinhasSection({ showToast }) {
 
   const updateForm = (idx, field, value) => setForms(forms.map((f,i) => i===idx ? {...f,[field]:value} : f))
 
-  // MELHORIA — upload por linha
   const handleUpload = async (idx, file) => {
     const upd = [...uploading]; upd[idx] = true; setUploading(upd)
     try {
       const result = await api.upload.image(file)
-      const url = result.url || result
-      updateForm(idx, 'imagem_url', url)
+      updateForm(idx, 'imagem_url', result.url || result)
       showToast(`Imagem da Linha ${idx+1} enviada!`)
     } catch (err) { showToast(err.message||'Erro no upload','error') }
     finally { const upd2 = [...uploading]; upd2[idx] = false; setUploading(upd2) }
@@ -390,7 +382,7 @@ function LinhasSection({ showToast }) {
                   )}
                   <input value={form.imagem_url} onChange={e => updateForm(idx,'imagem_url',e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
                   <div className="flex items-center gap-3">
-                    <UploadButton onUpload={(file) => handleUpload(idx, file)} uploading={uploading[idx]}/>
+                    <UploadButton onUpload={(file) => handleUpload(idx, file)} uploading={uploading[idx]} showToast={showToast}/>
                     <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
                   </div>
                 </div>
@@ -422,20 +414,20 @@ function LinhasSection({ showToast }) {
 //  ABA C — PRODUTOS
 // ══════════════════════════════════════════════════════════════
 function ProdutosSection({ showToast, setDeleteConfirm }) {
-  const [products,     setProducts]     = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [saving,       setSaving]       = useState(false)
-  const [duplicating,  setDuplicating]  = useState(null)
-  const [showForm,     setShowForm]     = useState(false)
-  const [editingId,    setEditingId]    = useState(null)
-  const [form,         setForm]         = useState(EMPTY_PROD)
-  const [search,       setSearch]       = useState('')
-  const [statusFilter, setStatusFilter] = useState('todos')
-  const [savingOrder,  setSavingOrder]  = useState(false)
-  const [priceHistory, setPriceHistory] = useState(null)
-  const [galleryProd,  setGalleryProd]  = useState(null)
-  const [deleting,     setDeleting]     = useState(null)
-  const [uploading,    setUploading]    = useState(false)
+  const [products,    setProducts]    = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [saving,      setSaving]      = useState(false)
+  const [duplicating, setDuplicating] = useState(null)
+  const [showForm,    setShowForm]    = useState(false)
+  const [editingId,   setEditingId]   = useState(null)
+  const [form,        setForm]        = useState(EMPTY_PROD)
+  const [search,      setSearch]      = useState('')
+  const [statusFilter,setStatusFilter]= useState('todos')
+  const [savingOrder, setSavingOrder] = useState(false)
+  const [priceHistory,setPriceHistory]= useState(null)
+  const [galleryProd, setGalleryProd] = useState(null)
+  const [deleting,    setDeleting]    = useState(null)
+  const [uploading,   setUploading]   = useState(false)
 
   const dragItem  = useRef(null)
   const dragOver  = useRef(null)
@@ -472,10 +464,8 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
     if (from===null||to===null||from===to) return
     const reordered=[...products]; const [moved]=reordered.splice(from,1); reordered.splice(to,0,moved)
     setProducts(reordered); setSavingOrder(true)
-    try {
-      await api.adminProducts.reorder(reordered.map((p,i) => ({ id:p.id, ordem:i })))
-      showToast('Ordem salva!')
-    } catch { showToast('Erro ao salvar ordem','error') }
+    try { await api.adminProducts.reorder(reordered.map((p,i) => ({ id:p.id, ordem:i }))); showToast('Ordem salva!') }
+    catch { showToast('Erro ao salvar ordem','error') }
     finally { setSavingOrder(false) }
   }
 
@@ -587,7 +577,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                 className={`border transition-all select-none ${dragIndex===idx?'opacity-40':''} ${overIndex===idx&&dragIndex!==idx?'drag-over border-sage/50':'border-white/8 hover:border-white/15'}`}
                 style={{background:'rgba(255,255,255,0.03)'}}>
 
-                {/* ── Linha principal ── */}
+                {/* ── Linha principal do card ── */}
                 <div className="flex items-center gap-2 md:gap-3 p-3 md:p-4"
                   style={{cursor:(!search&&statusFilter==='todos')?'grab':'default'}}>
 
@@ -612,7 +602,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {p.linha && <span className="font-body text-xs text-white/30 tracking-widest uppercase">{p.linha}</span>}
-                      {/* CORREÇÃO — Number() antes de comparar */}
+                      {/* CORREÇÃO — Number() para comparação correta quando API retorna string */}
                       {p.estoque !== null && p.estoque !== undefined && (
                         <span className={`font-body text-xs px-1.5 py-0.5 ${Number(p.estoque)<=0 ? 'bg-red-900/30 text-red-400' : Number(p.estoque)<=5 ? 'bg-orange-900/30 text-orange-400' : 'bg-sage/10 text-sage/70'}`}>
                           {Number(p.estoque)<=0 ? 'ESGOTADO' : `${p.estoque} un.`}
@@ -630,7 +620,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                   </div>
                 </div>
 
-                {/* CORREÇÃO — Barra de ações: desktop inline, mobile na base */}
+                {/* ── Mobile: barra de ações na base ── */}
                 <div className="md:hidden flex items-center gap-1 px-3 pb-3 border-t border-white/5 pt-2">
                   <button onClick={() => openEdit(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -654,8 +644,8 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                   </button>
                 </div>
 
-                {/* Desktop — botões inline na linha principal (sem absolute) */}
-                <div className="hidden md:flex items-center gap-1.5 px-4 pb-4 justify-end">
+                {/* ── Desktop: botões inline abaixo da linha principal ── */}
+                <div className="hidden md:flex items-center gap-1.5 px-4 pb-3 justify-end">
                   <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Editar">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
@@ -749,7 +739,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                   )}
                   <input value={form.imagem_url} onChange={e=>setForm({...form,imagem_url:e.target.value})} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
                   <div className="flex items-center gap-3">
-                    <UploadButton onUpload={handleFileUpload} uploading={uploading}/>
+                    <UploadButton onUpload={handleFileUpload} uploading={uploading} showToast={showToast}/>
                     <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
                   </div>
                 </div>
@@ -1108,6 +1098,7 @@ function DepoimentosSection({ showToast }) {
 
 // ══════════════════════════════════════════════════════════════
 //  ABA E — VENDAS
+//  CORREÇÃO: lê v.clientes?.nome e v.venda_itens (estrutura real do PHP)
 // ══════════════════════════════════════════════════════════════
 const PERIODOS = [
   { key:'hoje',   label:'Hoje' },
@@ -1126,22 +1117,17 @@ function VendasSection({ showToast }) {
   const [deleteId,    setDeleteId]    = useState(null)
   const [confirmDel,  setConfirmDel]  = useState(null)
 
-  const getDateRange = () => {
-    const now   = new Date()
-    const today = now.toISOString().split('T')[0]
-    if (periodo==='hoje')   return { from:today, to:today }
-    if (periodo==='semana') { const d=new Date(now); d.setDate(d.getDate()-7); return { from:d.toISOString().split('T')[0], to:today } }
-    if (periodo==='mes')    { const d=new Date(now); d.setDate(1); return { from:d.toISOString().split('T')[0], to:today } }
-    return { from:dataInicio, to:dataFim }
-  }
-
   const fetchVendas = async () => {
     setLoading(true)
     try {
-      const { from, to } = getDateRange()
       const params = {}
-      if (from) params.from = from
-      if (to)   params.to   = to
+      if (periodo === 'custom') {
+        params.from = dataInicio
+        params.to   = dataFim
+      } else {
+        // Passa o periodo diretamente para o apiClient mapear corretamente
+        params.periodo = periodo
+      }
       const data = await api.vendas.list(params)
       setVendas(data||[])
     } catch {}
@@ -1150,7 +1136,10 @@ function VendasSection({ showToast }) {
 
   useEffect(() => { fetchVendas() }, [periodo, dataInicio, dataFim])
 
-  const totalPeriodo = vendas.filter(v => v.status !== 'cancelada').reduce((s,v) => s + Number(v.total), 0)
+  // CORREÇÃO — soma usando estrutura real do PHP (v.venda_itens)
+  const totalPeriodo = vendas
+    .filter(v => v.status !== 'cancelada')
+    .reduce((s,v) => s + Number(v.total), 0)
 
   const handleDelete = async () => {
     if (!confirmDel) return
@@ -1165,10 +1154,13 @@ function VendasSection({ showToast }) {
       <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-white/8 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-2xl font-light text-white">Vendas</h1>
-          <p className="font-body text-xs text-white/30 mt-0.5">{vendas.length} venda{vendas.length!==1?'s':''} · Total: <span className="text-sage">{fmtBRL(totalPeriodo)}</span></p>
+          <p className="font-body text-xs text-white/30 mt-0.5">
+            {vendas.length} venda{vendas.length!==1?'s':''} · Total: <span className="text-sage">{fmtBRL(totalPeriodo)}</span>
+          </p>
         </div>
       </header>
 
+      {/* Filtros + limpar */}
       <div className="px-6 md:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap">
         {PERIODOS.map(p => (
           <button key={p.key} onClick={() => setPeriodo(p.key)}
@@ -1200,51 +1192,64 @@ function VendasSection({ showToast }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {vendas.map(v => (
-              <div key={v.id}>
-                <div className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/15 transition-all cursor-pointer"
-                  style={{background:'rgba(255,255,255,0.02)'}}
-                  onClick={() => setDetailVenda(detailVenda?.id === v.id ? null : v)}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-body text-xs text-white/30">#{v.numero}</span>
-                      <span className="font-body text-sm text-white font-medium">{v.cliente_nome || 'Cliente não informado'}</span>
-                      <span className={`font-body text-xs px-2 py-0.5 ${v.status==='cancelada' ? 'bg-red-900/30 text-red-400' : 'bg-sage/10 text-sage'}`}>{v.status}</span>
+            {vendas.map(v => {
+              // CORREÇÃO — lê estrutura real retornada pelo PHP
+              const clienteNome = v.clientes?.nome || 'Cliente não informado'
+              const clienteWA   = v.clientes?.whatsapp || ''
+              const itens       = v.venda_itens || []
+
+              return (
+                <div key={v.id}>
+                  <div className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/15 transition-all cursor-pointer"
+                    style={{background:'rgba(255,255,255,0.02)'}}
+                    onClick={() => setDetailVenda(detailVenda?.id === v.id ? null : v)}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-body text-xs text-white/30">#{v.numero}</span>
+                        <span className="font-body text-sm text-white font-medium">{clienteNome}</span>
+                        <span className={`font-body text-xs px-2 py-0.5 ${v.status==='cancelada' ? 'bg-red-900/30 text-red-400' : 'bg-sage/10 text-sage'}`}>{v.status}</span>
+                      </div>
+                      <p className="font-body text-xs text-white/30 mt-0.5">
+                        {fmtDateTime(v.created_at)}
+                        <span className="mx-1.5 text-white/15">·</span>
+                        {itens.map(i => i.nome_produto).join(', ').substring(0,60)}
+                        {itens.map(i=>i.nome_produto).join(', ').length > 60 ? '…' : ''}
+                        <span className="mx-1.5 text-white/15">·</span>
+                        {itens.length} item{itens.length!==1?'s':''}
+                      </p>
                     </div>
-                    <p className="font-body text-xs text-white/30 mt-0.5">
-                      {fmtDateTime(v.created_at)}
-                      <span className="mx-1.5 text-white/15">·</span>
-                      {(v.itens||[]).map(i => i.nome_produto).join(', ').substring(0,60)}
-                      <span className="mx-1.5 text-white/15">·</span>
-                      {(v.itens||[]).length} item{(v.itens||[]).length!==1?'s':''}
-                    </p>
+                    <p className="font-display text-xl font-light text-white flex-shrink-0">{fmtBRL(v.total)}</p>
+                    <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
+                      <button onClick={() => setConfirmDel(v)} disabled={deleteId===v.id}
+                        className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all">
+                        {deleteId===v.id
+                          ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
+                          : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
+                      </button>
+                    </div>
                   </div>
-                  <p className="font-display text-xl font-light text-white flex-shrink-0">{fmtBRL(v.total)}</p>
-                  <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
-                    <button onClick={() => setConfirmDel(v)} disabled={deleteId===v.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all">
-                      {deleteId===v.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
-                    </button>
-                  </div>
+
+                  {/* Detalhe expandido — CORREÇÃO: usa itens = v.venda_itens */}
+                  {detailVenda?.id === v.id && (
+                    <div className="border border-white/8 border-t-0 px-5 py-4" style={{background:'rgba(74,124,89,0.04)'}}>
+                      {clienteWA   && <p className="font-body text-xs text-white/40 mb-2">WhatsApp: <span className="text-white/60">{clienteWA}</span></p>}
+                      {v.clientes?.cidade && <p className="font-body text-xs text-white/40 mb-3">Cidade: <span className="text-white/60">{v.clientes.cidade}</span></p>}
+                      <div className="space-y-2 mt-1">
+                        {itens.map((i,idx) => (
+                          <div key={idx} className="flex justify-between font-body text-xs text-white/60">
+                            <span>{i.nome_produto} <span className="text-white/30">x{i.quantidade}</span></span>
+                            <span>{fmtBRL(i.subtotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between font-body text-sm text-white mt-3 pt-3 border-t border-white/8">
+                        <span>Total</span><span className="font-display text-lg">{fmtBRL(v.total)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {detailVenda?.id === v.id && (
-                  <div className="border border-white/8 border-t-0 px-5 py-4" style={{background:'rgba(74,124,89,0.04)'}}>
-                    {v.cliente_whatsapp && <p className="font-body text-xs text-white/40 mb-3">WhatsApp: <span className="text-white/60">{v.cliente_whatsapp}</span></p>}
-                    {v.cliente_cidade && <p className="font-body text-xs text-white/40 mb-3">Cidade: <span className="text-white/60">{v.cliente_cidade}</span></p>}
-                    <div className="space-y-2">
-                      {(v.itens||[]).map((i,idx) => (
-                        <div key={idx} className="flex justify-between font-body text-xs text-white/60">
-                          <span>{i.nome_produto} <span className="text-white/30">x{i.quantidade}</span></span>
-                          <span>{fmtBRL(i.subtotal)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between font-body text-sm text-white mt-3 pt-3 border-t border-white/8">
-                      <span>Total</span><span className="font-display text-lg">{fmtBRL(v.total)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -1268,6 +1273,7 @@ function VendasSection({ showToast }) {
 
 // ══════════════════════════════════════════════════════════════
 //  ABA F — CLIENTES
+//  CORREÇÃO: historico usa v.venda_itens (estrutura real do PHP)
 // ══════════════════════════════════════════════════════════════
 function ClientesSection({ showToast }) {
   const [clientes,    setClientes]    = useState([])
@@ -1306,8 +1312,10 @@ function ClientesSection({ showToast }) {
       const stats = {
         totalConfirm:   confirmadas.length,
         totalCancelada: v.filter(x => x.status==='cancelada').length,
-        totalGasto:     confirmadas.reduce((s,x) => s+Number(x.total), 0),
-        ticketMedio:    confirmadas.length ? confirmadas.reduce((s,x) => s+Number(x.total),0)/confirmadas.length : 0,
+        totalGasto:     confirmadas.reduce((s,x) => s + Number(x.total), 0),
+        ticketMedio:    confirmadas.length
+          ? confirmadas.reduce((s,x) => s + Number(x.total), 0) / confirmadas.length
+          : 0,
         primeiraCompra: v.length ? v[v.length-1].created_at : null,
         ultimaCompra:   v.length ? v[0].created_at : null,
       }
@@ -1356,6 +1364,7 @@ function ClientesSection({ showToast }) {
           NOVO CLIENTE
         </button>
       </header>
+
       <div className="px-6 md:px-8 py-4 border-b border-white/5">
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1364,6 +1373,7 @@ function ClientesSection({ showToast }) {
             style={{background:'rgba(255,255,255,0.04)'}}/>
         </div>
       </div>
+
       <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
         {loading ? <SectionLoader/> : filtered.length === 0 ? (
           <div className="text-center py-20">
@@ -1373,8 +1383,10 @@ function ClientesSection({ showToast }) {
         ) : (
           <div className="space-y-2">
             {filtered.map(c => (
-              <div key={c.id} className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/20 transition-all cursor-pointer group"
-                style={{background:'rgba(255,255,255,0.02)'}} onClick={() => openHistorico(c)}>
+              <div key={c.id}
+                className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/20 transition-all cursor-pointer group"
+                style={{background:'rgba(255,255,255,0.02)'}}
+                onClick={() => openHistorico(c)}>
                 <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/30 transition-colors">
                   <span className="font-display text-sage text-lg">{c.nome?.charAt(0).toUpperCase()}</span>
                 </div>
@@ -1398,7 +1410,8 @@ function ClientesSection({ showToast }) {
                   <button onClick={(e) => openEdit(c,e)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Editar">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); setConfirmDel(c) }} disabled={deleteId===c.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all" title="Excluir">
+                  <button onClick={(e) => { e.stopPropagation(); setConfirmDel(c) }} disabled={deleteId===c.id}
+                    className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all" title="Excluir">
                     {deleteId===c.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
                       : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
                   </button>
@@ -1409,9 +1422,13 @@ function ClientesSection({ showToast }) {
         )}
       </div>
 
+      {/* Modal histórico — CORREÇÃO: usa v.venda_itens */}
       {historico && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(6px)'}} onClick={() => setHistorico(null)}>
-          <div className="w-full max-w-xl border border-white/10 max-h-[88vh] flex flex-col" style={{background:'#141414'}} onClick={e=>e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(6px)'}}
+          onClick={() => setHistorico(null)}>
+          <div className="w-full max-w-xl border border-white/10 max-h-[88vh] flex flex-col"
+            style={{background:'#141414'}} onClick={e=>e.stopPropagation()}>
             <div className="flex items-start justify-between px-6 py-5 border-b border-white/8">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0">
@@ -1429,8 +1446,11 @@ function ClientesSection({ showToast }) {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
+
             {histLoading ? (
-              <div className="flex-1 flex items-center justify-center py-16"><div className="w-8 h-8 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+              <div className="flex-1 flex items-center justify-center py-16">
+                <div className="w-8 h-8 border-2 border-sage border-t-transparent rounded-full animate-spin"/>
+              </div>
             ) : (
               <>
                 {historico.stats && (
@@ -1451,29 +1471,33 @@ function ClientesSection({ showToast }) {
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                   {historico.vendas.length === 0 ? (
                     <p className="font-body text-sm text-white/30 text-center py-8">Nenhuma compra registrada.</p>
-                  ) : historico.vendas.map((v,i) => (
-                    <div key={i} className="mb-4 border border-white/8 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5" style={{background:'rgba(255,255,255,0.03)'}}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-body text-xs text-white/30">#{v.numero}</span>
-                          <span className="font-body text-xs text-white/50">{fmtDateTime(v.created_at)}</span>
-                        </div>
-                        <span className={`font-body text-xs px-2 py-0.5 ${v.status==='cancelada'?'bg-red-900/30 text-red-400':'bg-sage/10 text-sage'}`}>{v.status}</span>
-                      </div>
-                      <div className="px-4 py-3 space-y-2">
-                        {(v.itens||[]).map((it,j) => (
-                          <div key={j} className="flex justify-between font-body text-xs text-white/70">
-                            <span>{it.nome_produto} <span className="text-white/40">×{it.quantidade}</span></span>
-                            <span>{fmtBRL(it.subtotal)}</span>
+                  ) : historico.vendas.map((v,i) => {
+                    // CORREÇÃO — lê v.venda_itens que é o que o PHP retorna
+                    const itens = v.venda_itens || []
+                    return (
+                      <div key={i} className="mb-4 border border-white/8 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5" style={{background:'rgba(255,255,255,0.03)'}}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-body text-xs text-white/30">#{v.numero}</span>
+                            <span className="font-body text-xs text-white/50">{fmtDateTime(v.created_at)}</span>
                           </div>
-                        ))}
+                          <span className={`font-body text-xs px-2 py-0.5 ${v.status==='cancelada'?'bg-red-900/30 text-red-400':'bg-sage/10 text-sage'}`}>{v.status}</span>
+                        </div>
+                        <div className="px-4 py-3 space-y-2">
+                          {itens.map((it,j) => (
+                            <div key={j} className="flex justify-between font-body text-xs text-white/70">
+                              <span>{it.nome_produto} <span className="text-white/40">×{it.quantidade}</span></span>
+                              <span>{fmtBRL(it.subtotal)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between items-center px-4 py-3 border-t border-white/5" style={{background:'rgba(255,255,255,0.03)'}}>
+                          <span className="font-body text-xs text-white/40 tracking-widest">TOTAL</span>
+                          <span className="font-display text-lg font-light text-white">{fmtBRL(v.total)}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center px-4 py-3 border-t border-white/5" style={{background:'rgba(255,255,255,0.03)'}}>
-                        <span className="font-body text-xs text-white/40 tracking-widest">TOTAL</span>
-                        <span className="font-display text-lg font-light text-white">{fmtBRL(v.total)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             )}

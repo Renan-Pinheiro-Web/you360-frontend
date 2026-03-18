@@ -27,7 +27,7 @@ export async function getServerSideProps() {
     ])
     return {
       props: {
-        initialProducts: products   || [],
+        initialProducts: products    || [],
         heroConfig:      heroConfig  || null,
         linhasConfig:    linhasConfig || [],
         depoimentos:     depoimentos || [],
@@ -36,12 +36,7 @@ export async function getServerSideProps() {
   } catch (err) {
     console.error('[getServerSideProps]', err)
     return {
-      props: {
-        initialProducts: [],
-        heroConfig: null,
-        linhasConfig: [],
-        depoimentos: [],
-      },
+      props: { initialProducts: [], heroConfig: null, linhasConfig: [], depoimentos: [] },
     }
   }
 }
@@ -80,11 +75,22 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
     return () => obs.disconnect()
   }, [filtered])
 
+  // ── Recarrega produtos do servidor para refletir estoque atualizado
+  const refreshProducts = async () => {
+    try {
+      const fresh = await api.products.list()
+      if (fresh) setProducts(fresh)
+    } catch {}
+  }
+
   // ── Carrinho ────────────────────────────────────────────────
   const addToCart = (produto) => {
-    // CORREÇÃO — converter estoque para Number antes de usar como maxQty
-    const estoqueNum = produto.estoque !== null && produto.estoque !== undefined ? Number(produto.estoque) : null
+    // Converte estoque para Number (API pode retornar string)
+    const estoqueNum = produto.estoque !== null && produto.estoque !== undefined
+      ? Number(produto.estoque)
+      : null
     const maxQty = estoqueNum !== null ? estoqueNum : Infinity
+
     setCart(prev => {
       const exists = prev.find(i => i.id === produto.id)
       if (exists) {
@@ -92,7 +98,13 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
         return prev.map(i => i.id === produto.id ? { ...i, qty: i.qty + 1 } : i)
       }
       if (maxQty <= 0) return prev
-      return [...prev, { id: produto.id, nome: produto.nome, preco: produto.preco, qty: 1, estoque: estoqueNum }]
+      return [...prev, {
+        id:      produto.id,
+        nome:    produto.nome,
+        preco:   produto.preco,
+        qty:     1,
+        estoque: estoqueNum,
+      }]
     })
     setCartOpen(true)
   }
@@ -102,7 +114,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
   const changeQty = (id, delta) => setCart(prev =>
     prev.map(i => {
       if (i.id !== id) return i
-      // CORREÇÃO — estoque já está convertido para Number quando salvo no cart
+      // estoque já está como Number quando salvo no cart
       const maxQty = i.estoque !== null && i.estoque !== undefined ? i.estoque : Infinity
       return { ...i, qty: Math.min(Math.max(1, i.qty + delta), maxQty) }
     })
@@ -141,6 +153,9 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
         })),
       })
 
+      // CORREÇÃO — recarrega produtos para atualizar estoque em tempo real
+      await refreshProducts()
+
       const linhasMsg = cartSnapshot.map(i =>
         `• *${i.nome}* x${i.qty} — R$ ${(i.preco * i.qty).toFixed(2).replace('.', ',')}`
       )
@@ -170,11 +185,11 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
   }
 
   const deps = depoimentos.length > 0 ? depoimentos : [
-    { id:1, nome:'Fernanda Lima', cidade:'Fortaleza, CE', inicial:'F', cor:'text-sage', bg:'bg-sage/30',
+    { id:1, nome:'Fernanda Lima',    cidade:'Fortaleza, CE', inicial:'F', cor:'text-sage',       bg:'bg-sage/30',
       texto:'O sérum de vitamina C da YOU360 transformou minha pele em apenas 3 semanas. Manchas sumidas e pele completamente iluminada!' },
-    { id:2, nome:'Camila Rocha', cidade:'São Paulo, SP', inicial:'C', cor:'text-blush', bg:'bg-blush/30',
+    { id:2, nome:'Camila Rocha',     cidade:'São Paulo, SP', inicial:'C', cor:'text-blush',      bg:'bg-blush/30',
       texto:'Uso a linha Essence YOU todo dia e recebo elogios constantemente. A fixação é impressionante — dura o dia inteiro.' },
-    { id:3, nome:'Patrícia Mendes', cidade:'Recife, PE', inicial:'P', cor:'text-sage-light', bg:'bg-sage/20',
+    { id:3, nome:'Patrícia Mendes',  cidade:'Recife, PE',    inicial:'P', cor:'text-sage-light', bg:'bg-sage/20',
       texto:'O Beauty Pro AHA Peel foi um investimento que valeu muito. Pele mais firme e sem manchas. Me sinto renovada!' },
   ]
 
@@ -345,18 +360,18 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
             <div className="absolute w-[260px] h-[260px] md:w-[340px] md:h-[340px] rounded-full border border-blush/30 animate-spin" style={{ animationDuration: '14s', animationDirection: 'reverse' }}/>
             <div className="relative z-10 w-[240px] h-[240px] md:w-[320px] md:h-[320px] rounded-full overflow-hidden"
               style={{ background: 'linear-gradient(135deg, #d4e8da 0%, #f0d8d8 100%)' }}>
-              {heroConfig?.imagem_url ? (
+              {heroConfig?.imagem_url
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={heroConfig.imagem_url} alt="Produto em destaque" className="w-full h-full object-cover"/>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-                    <circle cx="60" cy="60" r="50" fill="#d4e8da" opacity=".6"/>
-                    <circle cx="60" cy="60" r="35" fill="#4a7c59" opacity=".3"/>
-                    <text x="60" y="68" textAnchor="middle" fontFamily="serif" fontSize="28" fill="#2e5238" fontWeight="300">Y360</text>
-                  </svg>
-                </div>
-              )}
+                ? <img src={heroConfig.imagem_url} alt="Produto em destaque" className="w-full h-full object-cover"/>
+                : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                      <circle cx="60" cy="60" r="50" fill="#d4e8da" opacity=".6"/>
+                      <circle cx="60" cy="60" r="35" fill="#4a7c59" opacity=".3"/>
+                      <text x="60" y="68" textAnchor="middle" fontFamily="serif" fontSize="28" fill="#2e5238" fontWeight="300">Y360</text>
+                    </svg>
+                  </div>
+                )}
             </div>
             {heroConfig?.nome && (
               <div className="absolute bottom-4 left-0 bg-obsidian/90 text-white px-4 py-2 text-xs font-body z-10">
@@ -414,10 +429,10 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
       <section className="bg-obsidian text-white py-20 px-6 md:px-12">
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {[
-            { icon:'🧪', tag:'FORMULAÇÃO',    title:'Ingredientes\nAtivos Premium',   desc:'Selecionamos os ativos mais eficazes e seguros do mercado.' },
-            { icon:'✨', tag:'RESULTADO',      title:'Eficácia\nComprovada',           desc:'Resultados visíveis desde as primeiras semanas de uso.' },
-            { icon:'🌿', tag:'CRUELTY-FREE',   title:'Sem Testes\nem Animais',         desc:'100% cruelty-free. Beleza com consciência e responsabilidade.' },
-            { icon:'📦', tag:'EMBALAGEM',      title:'Design\nSustentável',            desc:'Embalagens eco-friendly que respeitam o meio ambiente.' },
+            { icon:'🧪', tag:'FORMULAÇÃO',  title:'Ingredientes\nAtivos Premium',   desc:'Selecionamos os ativos mais eficazes e seguros do mercado.' },
+            { icon:'✨', tag:'RESULTADO',    title:'Eficácia\nComprovada',           desc:'Resultados visíveis desde as primeiras semanas de uso.' },
+            { icon:'🌿', tag:'CRUELTY-FREE', title:'Sem Testes\nem Animais',         desc:'100% cruelty-free. Beleza com consciência e responsabilidade.' },
+            { icon:'📦', tag:'EMBALAGEM',    title:'Design\nSustentável',            desc:'Embalagens eco-friendly que respeitam o meio ambiente.' },
           ].map((d, i) => (
             <div key={i} className={`reveal ${i>0?`reveal-delay-${i}`:''} text-center`}>
               <div className="w-12 h-12 rounded-full border border-sage flex items-center justify-center mx-auto mb-5 text-xl">{d.icon}</div>
@@ -513,13 +528,17 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
               return (
                 <div key={t.id || i} className={`testimonial-card bg-white/5 p-8 reveal ${i>0?`reveal-delay-${i}`:''}`}>
                   <div className="flex gap-1 mb-5"><span className="text-sage">★★★★★</span></div>
-                  <p className="font-display text-xl font-light text-white/80 italic leading-relaxed mb-6">"{t.texto}"</p>
+                  {/* CORREÇÃO — quebra de texto no depoimento */}
+                  <p className="font-display text-xl font-light text-white/80 italic leading-relaxed mb-6"
+                    style={{ overflowWrap:'break-word', wordBreak:'break-word', whiteSpace:'normal' }}>
+                    "{t.texto}"
+                  </p>
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center font-display ${cor} text-lg flex-shrink-0`}>
                       {t.inicial || t.nome?.charAt(0) || '?'}
                     </div>
-                    <div>
-                      <p className="font-body text-sm text-white font-medium">{t.nome}</p>
+                    <div className="min-w-0">
+                      <p className="font-body text-sm text-white font-medium" style={{ overflowWrap:'break-word', wordBreak:'break-word' }}>{t.nome}</p>
                       <p className="font-body text-xs text-white/40 tracking-wider">{t.cidade}</p>
                     </div>
                   </div>
@@ -616,8 +635,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
                 className="w-full bg-sage text-white font-body text-xs tracking-widest py-4 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-3 mt-2">
                 {sendingOrder
                   ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>PROCESSANDO...</>
-                  : 'ENVIAR PEDIDO VIA WHATSAPP'
-                }
+                  : 'ENVIAR PEDIDO VIA WHATSAPP'}
               </button>
             </div>
           </div>
