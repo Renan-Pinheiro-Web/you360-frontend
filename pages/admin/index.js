@@ -378,6 +378,8 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
   const [priceHistory, setPriceHistory] = useState(null)
   const [galleryProd,  setGalleryProd]  = useState(null)
   const [deleting,     setDeleting]     = useState(null)
+  const [uploading,    setUploading]    = useState(false)  // MELHORIA 1
+  const fileRef = useRef()                                  // MELHORIA 1
 
   const dragItem  = useRef(null)
   const dragOver  = useRef(null)
@@ -448,6 +450,22 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
   }
   const closeForm = () => { setShowForm(false); setEditingId(null) }
 
+  // MELHORIA 1 — upload de arquivo
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const tiposPermitidos = ['image/jpeg','image/png','image/webp','image/gif']
+    if (!tiposPermitidos.includes(file.type)) return showToast('Formato inválido. Use JPG, PNG ou WEBP.','error')
+    if (file.size > 5 * 1024 * 1024) return showToast('Imagem muito grande. Máximo 5MB.','error')
+    setUploading(true)
+    try {
+      const result = await api.upload.image(file)
+      setForm(f => ({...f, imagem_url: result.url || result}))
+      showToast('Imagem enviada!')
+    } catch (err) { showToast(err.message||'Erro no upload','error') }
+    finally { setUploading(false); e.target.value = '' }
+  }
+
   const handleSave = async (e) => {
     e.preventDefault()
     if (!form.nome.trim()) return showToast('Nome é obrigatório','error')
@@ -481,7 +499,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <header className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-white/8">
+      <header className="flex items-center justify-between px-4 md:px-8 py-5 border-b border-white/8">
         <div>
           <h1 className="font-display text-2xl font-light text-white">Produtos</h1>
           <p className="font-body text-xs text-white/30 mt-0.5 flex items-center gap-2">
@@ -489,20 +507,21 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
             {savingOrder && <span className="text-sage animate-pulse">· salvando ordem...</span>}
           </p>
         </div>
-        <button onClick={openNew} className="bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
+        <button onClick={openNew} className="bg-sage text-white font-body text-xs tracking-widest px-3 md:px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-          NOVO PRODUTO
+          <span className="hidden sm:inline">NOVO PRODUTO</span>
+          <span className="sm:hidden">NOVO</span>
         </button>
       </header>
 
-      <div className="px-6 md:px-8 py-4 border-b border-white/5 space-y-3">
+      <div className="px-4 md:px-8 py-4 border-b border-white/5 space-y-3">
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome ou linha..."
             className="w-full pl-10 pr-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
             style={{background:'rgba(255,255,255,0.04)'}}/>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {[{key:'todos',label:`Todos (${products.length})`},{key:'ativos',label:`Ativos (${countAtivos})`},{key:'inativos',label:`Inativos (${countInativos})`}].map(f => (
             <button key={f.key} onClick={() => setStatusFilter(f.key)}
               className={`font-body text-xs tracking-widest px-3 py-1.5 border transition-all ${statusFilter===f.key ? 'border-sage text-sage bg-sage/10' : 'border-white/10 text-white/30 hover:border-white/30 hover:text-white/50'}`}>
@@ -512,7 +531,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
+      <div className="flex-1 overflow-auto px-4 md:px-8 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
         ) : filtered.length === 0 ? (
@@ -527,65 +546,92 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                 draggable={!search&&statusFilter==='todos'}
                 onDragStart={()=>handleDragStart(idx)} onDragEnter={()=>handleDragEnter(idx)}
                 onDragEnd={handleDragEnd} onDragOver={e=>e.preventDefault()}
-                className={`flex items-center gap-3 p-4 border transition-all select-none ${dragIndex===idx?'opacity-40':''} ${overIndex===idx&&dragIndex!==idx?'drag-over border-sage/50':'border-white/8 hover:border-white/15'}`}
-                style={{background:'rgba(255,255,255,0.03)',cursor:(!search&&statusFilter==='todos')?'grab':'default'}}>
+                className={`border transition-all select-none ${dragIndex===idx?'opacity-40':''} ${overIndex===idx&&dragIndex!==idx?'drag-over border-sage/50':'border-white/8 hover:border-white/15'}`}
+                style={{background:'rgba(255,255,255,0.03)'}}>
 
-                {!search&&statusFilter==='todos' && (
-                  <div className="flex-shrink-0 text-white/20 hover:text-white/50 cursor-grab">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
+                {/* ── Linha principal ── */}
+                <div className="flex items-center gap-2 md:gap-3 p-3 md:p-4"
+                  style={{cursor:(!search&&statusFilter==='todos')?'grab':'default'}}>
+
+                  {!search&&statusFilter==='todos' && (
+                    <div className="flex-shrink-0 text-white/20 hover:text-white/50 cursor-grab hidden sm:block">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01"/></svg>
+                    </div>
+                  )}
+
+                  {/* Thumb */}
+                  <div className="w-12 h-12 md:w-14 md:h-14 flex-shrink-0 overflow-hidden" style={{background:'rgba(74,124,89,0.15)'}}>
+                    {p.imagem_url
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover"/>
+                      : <div className="w-full h-full flex items-center justify-center text-sage/40"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M3 21l5-5 4 4 4-5 5 6"/></svg></div>}
                   </div>
-                )}
 
-                <div className="w-14 h-14 flex-shrink-0 overflow-hidden" style={{background:'rgba(74,124,89,0.15)'}}>
-                  {p.imagem_url
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={p.imagem_url} alt={p.nome} className="w-full h-full object-cover"/>
-                    : <div className="w-full h-full flex items-center justify-center text-sage/40"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M3 21l5-5 4 4 4-5 5 6"/></svg></div>}
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-display text-base md:text-lg font-light text-white truncate">{p.nome}</p>
+                      {p.badge && <span className="font-body text-xs bg-sage/20 text-sage-light px-1.5 py-0.5">{p.badge}</span>}
+                      {!p.ativo && <span className="font-body text-xs bg-white/5 text-white/30 px-1.5 py-0.5 border border-white/10">INATIVO</span>}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {p.linha && <span className="font-body text-xs text-white/30 tracking-widest uppercase">{p.linha}</span>}
+                      {/* MELHORIA 2 — conversão para Number antes de comparar */}
+                      {Number(p.estoque) >= 0 && p.estoque !== null && p.estoque !== undefined && (
+                        <span className={`font-body text-xs px-1.5 py-0.5 ${Number(p.estoque)<=0 ? 'bg-red-900/30 text-red-400' : Number(p.estoque)<=5 ? 'bg-orange-900/30 text-orange-400' : 'bg-sage/10 text-sage/70'}`}>
+                          {Number(p.estoque)<=0 ? 'ESGOTADO' : `${p.estoque} un.`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preço + toggle — sempre visíveis */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <p className="font-display text-base md:text-xl font-light text-white">{fmtBRL(p.preco)}</p>
+                    <button onClick={() => toggleAtivo(p)}
+                      className={`w-9 md:w-10 h-5 rounded-full transition-all duration-300 relative flex-shrink-0 ${p.ativo?'bg-sage':'bg-white/15'}`} title={p.ativo?'Desativar':'Ativar'}>
+                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${p.ativo?'left-4 md:left-5':'left-0.5'}`}/>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-display text-lg font-light text-white truncate">{p.nome}</p>
-                    {p.badge && <span className="font-body text-xs bg-sage/20 text-sage-light px-2 py-0.5">{p.badge}</span>}
-                    {!p.ativo && <span className="font-body text-xs bg-white/5 text-white/30 px-2 py-0.5 border border-white/10">INATIVO</span>}
-                    {p.estoque !== null && p.estoque !== undefined && (
-                      <span className={`font-body text-xs px-2 py-0.5 ${p.estoque<=0 ? 'bg-red-900/30 text-red-400' : p.estoque<=5 ? 'bg-orange-900/30 text-orange-400' : 'bg-sage/10 text-sage/70'}`}>
-                        {p.estoque<=0 ? 'ESGOTADO' : `${p.estoque} un.`}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    {p.linha && <span className="font-body text-xs text-white/30 tracking-widest uppercase">{p.linha}</span>}
-                    {p.fragrancia && <span className="font-body text-xs text-white/20">· {p.fragrancia}</span>}
-                  </div>
-                </div>
-
-                <div className="hidden sm:block text-right flex-shrink-0">
-                  <p className="font-display text-xl font-light text-white">{fmtBRL(p.preco)}</p>
-                </div>
-
-                <button onClick={() => toggleAtivo(p)}
-                  className={`flex-shrink-0 w-10 h-5 rounded-full transition-all duration-300 relative ${p.ativo?'bg-sage':'bg-white/15'}`} title={p.ativo?'Desativar':'Ativar'}>
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${p.ativo?'left-5':'left-0.5'}`}/>
-                </button>
-
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Editar">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                {/* MELHORIA 5 — Barra de ações responsiva */}
+                <div className="flex items-center justify-end gap-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-0 border-t border-white/5 md:border-t-0 md:absolute md:top-1/2 md:-translate-y-1/2 md:right-4"
+                  style={{}}>
+                  {/* Em desktop: posição absolute dentro do card — Em mobile: barra na base */}
+                  <button onClick={() => openEdit(p)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs md:text-base"
+                    title="Editar">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span className="md:hidden">Editar</span>
                   </button>
-                  <button onClick={() => handleDuplicate(p)} disabled={duplicating===p.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all disabled:opacity-50" title="Duplicar">
-                    {duplicating===p.id ? <div className="w-3 h-3 border border-sage border-t-transparent rounded-full animate-spin"/>
-                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>}
+                  <button onClick={() => handleDuplicate(p)} disabled={duplicating===p.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all disabled:opacity-50 font-body text-xs"
+                    title="Duplicar">
+                    {duplicating===p.id
+                      ? <div className="w-3 h-3 border border-sage border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>}
+                    <span className="md:hidden">Duplicar</span>
                   </button>
-                  <button onClick={() => setGalleryProd(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Galeria">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <button onClick={() => setGalleryProd(p)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs"
+                    title="Galeria">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span className="md:hidden">Galeria</span>
                   </button>
-                  <button onClick={() => openPriceHistory(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Histórico de preços">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  <button onClick={() => openPriceHistory(p)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs"
+                    title="Histórico de preços">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span className="md:hidden">Preços</span>
                   </button>
-                  <button onClick={() => handleDelete(p)} disabled={deleting===p.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50" title="Excluir">
-                    {deleting===p.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
-                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>}
+                  <button onClick={() => handleDelete(p)} disabled={deleting===p.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50 font-body text-xs"
+                    title="Excluir">
+                    {deleting===p.id
+                      ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>}
+                    <span className="md:hidden">Excluir</span>
                   </button>
                 </div>
               </div>
@@ -651,15 +697,39 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                   </p>
                 </div>
               )}
-              <FormField label="URL DA IMAGEM PRINCIPAL">
-                <div className="flex gap-3 items-center">
+
+              {/* MELHORIA 1 — campo de imagem com upload + URL */}
+              <FormField label="IMAGEM PRINCIPAL">
+                <div className="space-y-3">
+                  {/* Preview */}
                   {form.imagem_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={form.imagem_url} alt="preview" className="w-16 h-16 object-cover border border-white/10 flex-shrink-0"/>
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={form.imagem_url} alt="preview" className="w-16 h-16 object-cover border border-white/10 flex-shrink-0"/>
+                      <p className="font-body text-xs text-white/40 truncate flex-1">{form.imagem_url}</p>
+                    </div>
                   )}
-                  <input value={form.imagem_url} onChange={e=>setForm({...form,imagem_url:e.target.value})} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
+                  {/* Input URL */}
+                  <input
+                    value={form.imagem_url}
+                    onChange={e=>setForm({...form,imagem_url:e.target.value})}
+                    placeholder="https://exemplo.com/imagem.jpg"
+                    className="admin-input"
+                  />
+                  {/* Botão upload */}
+                  <div className="flex items-center gap-3">
+                    <input ref={fileRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden"/>
+                    <button type="button" onClick={() => fileRef.current.click()} disabled={uploading}
+                      className="font-body text-xs tracking-widest border border-white/20 text-white/50 px-4 py-2 hover:border-sage hover:text-sage transition-all disabled:opacity-50 flex items-center gap-2">
+                      {uploading
+                        ? <><div className="w-3 h-3 border border-sage/50 border-t-sage rounded-full animate-spin"/>ENVIANDO...</>
+                        : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>FAZER UPLOAD</>}
+                    </button>
+                    <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
+                  </div>
                 </div>
               </FormField>
+
               <div className="flex items-center justify-between py-2">
                 <div><p className="font-body text-sm text-white">Produto ativo</p><p className="font-body text-xs text-white/30">Produtos inativos não aparecem na loja</p></div>
                 <button type="button" onClick={()=>setForm({...form,ativo:!form.ativo})} className={`w-12 h-6 rounded-full transition-all duration-300 relative ${form.ativo?'bg-sage':'bg-white/15'}`}>
@@ -668,7 +738,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={closeForm} className="flex-1 font-body text-xs tracking-widest border border-white/15 text-white/50 py-3 hover:border-white/30 transition-all">CANCELAR</button>
-                <button type="submit" disabled={saving} className="flex-1 bg-sage text-white font-body text-xs tracking-widest py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                <button type="submit" disabled={saving||uploading} className="flex-1 bg-sage text-white font-body text-xs tracking-widest py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                   {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
                   {saving ? 'SALVANDO...' : editingId ? 'SALVAR ALTERAÇÕES' : 'CADASTRAR PRODUTO'}
                 </button>
@@ -981,19 +1051,28 @@ function DepoimentosSection({ showToast }) {
                   </div>
                 </FormField>
               </div>
+
+              {/* MELHORIA 3 — fix quebra de texto no preview */}
               <div className="border border-white/8 p-4 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
                 <p className="font-body text-xs text-white/30 tracking-widest mb-3">PREVIEW</p>
                 <div className="flex items-start gap-3 min-w-0">
                   <div className={`w-10 h-10 rounded-full ${form.bg} flex items-center justify-center flex-shrink-0`}>
                     <span className={`font-display ${form.cor} text-lg`}>{form.inicial || form.nome?.charAt(0) || '?'}</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-body text-sm text-white font-medium">{form.nome || 'Nome do cliente'}</p>
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="font-body text-sm text-white font-medium"
+                      style={{overflowWrap:'break-word',wordBreak:'break-word'}}>
+                      {form.nome || 'Nome do cliente'}
+                    </p>
                     <p className="font-body text-xs text-white/40">{form.cidade || 'Cidade, Estado'}</p>
-                    <p className="font-display text-sm font-light text-white/60 italic mt-1">"{form.texto || 'Depoimento aparecerá aqui...'}"</p>
+                    <p className="font-display text-sm font-light text-white/60 italic mt-1"
+                      style={{overflowWrap:'break-word',wordBreak:'break-word',whiteSpace:'normal'}}>
+                      "{form.texto || 'Depoimento aparecerá aqui...'}"
+                    </p>
                   </div>
                 </div>
               </div>
+
               <div className="flex items-center justify-between py-2">
                 <div><p className="font-body text-sm text-white">Depoimento ativo</p><p className="font-body text-xs text-white/30">Inativos não aparecem na loja</p></div>
                 <button type="button" onClick={() => setForm({...form,ativo:!form.ativo})} className={`w-12 h-6 rounded-full transition-all duration-300 relative ${form.ativo?'bg-sage':'bg-white/15'}`}>
@@ -1094,6 +1173,7 @@ function VendasSection({ showToast, setActiveTab }) {
         </div>
       </header>
 
+      {/* MELHORIA 4 — filtros + botão limpar */}
       <div className="px-6 md:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap">
         {PERIODOS.map(p => (
           <button key={p.key} onClick={() => setPeriodo(p.key)}
@@ -1107,6 +1187,13 @@ function VendasSection({ showToast, setActiveTab }) {
             <span className="text-white/30 text-xs">até</span>
             <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage" style={{background:'rgba(255,255,255,0.05)'}}/>
           </div>
+        )}
+        {(periodo !== 'mes' || dataInicio || dataFim) && (
+          <button onClick={() => { setPeriodo('mes'); setDataInicio(''); setDataFim('') }}
+            className="font-body text-xs text-white/30 hover:text-white/60 transition-colors ml-1 flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            limpar filtros
+          </button>
         )}
       </div>
 
