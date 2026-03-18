@@ -1,4 +1,3 @@
-
 // components/ProductCard.js
 // YOU360 — Card de produto para a listagem da loja
 
@@ -8,9 +7,9 @@ import Link from 'next/link'
 export default function ProductCard({ product, delay = 0, onBuy }) {
   const [imgError, setImgError] = useState(false)
 
-  const esgotado = product.estoque !== null &&
-                   product.estoque !== undefined &&
-                   product.estoque <= 0
+  // CORREÇÃO — converter para Number antes de comparar (API retorna string)
+  const estoque  = product.estoque !== null && product.estoque !== undefined ? Number(product.estoque) : null
+  const esgotado = estoque !== null && estoque <= 0
 
   const bgClass = [
     'bottle-bg-1','bottle-bg-2','bottle-bg-3',
@@ -59,14 +58,14 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
             </div>
           )}
 
-          {/* Estoque baixo */}
-          {!esgotado && product.estoque !== null && product.estoque !== undefined && product.estoque <= 5 && product.estoque > 0 && (
+          {/* Estoque baixo — CORREÇÃO: usa variável estoque já convertida */}
+          {!esgotado && estoque !== null && estoque <= 5 && estoque > 0 && (
             <div className="absolute top-3 right-3 bg-blush-dark text-white font-body text-xs px-2 py-0.5">
-              ÚLTIMAS {product.estoque}
+              ÚLTIMAS {estoque}
             </div>
           )}
 
-          {/* Hover overlay com botão ver */}
+          {/* Hover overlay */}
           <div className="absolute inset-0 bg-obsidian/0 group-hover:bg-obsidian/20 transition-all duration-500 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100">
             <span className="font-body text-xs tracking-widest text-white border border-white/60 px-4 py-2 backdrop-blur-sm">
               VER DETALHES

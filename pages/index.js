@@ -82,7 +82,9 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
 
   // ── Carrinho ────────────────────────────────────────────────
   const addToCart = (produto) => {
-    const maxQty = produto.estoque !== null && produto.estoque !== undefined ? produto.estoque : Infinity
+    // CORREÇÃO — converter estoque para Number antes de usar como maxQty
+    const estoqueNum = produto.estoque !== null && produto.estoque !== undefined ? Number(produto.estoque) : null
+    const maxQty = estoqueNum !== null ? estoqueNum : Infinity
     setCart(prev => {
       const exists = prev.find(i => i.id === produto.id)
       if (exists) {
@@ -90,19 +92,22 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
         return prev.map(i => i.id === produto.id ? { ...i, qty: i.qty + 1 } : i)
       }
       if (maxQty <= 0) return prev
-      return [...prev, { id: produto.id, nome: produto.nome, preco: produto.preco, qty: 1, estoque: produto.estoque ?? null }]
+      return [...prev, { id: produto.id, nome: produto.nome, preco: produto.preco, qty: 1, estoque: estoqueNum }]
     })
     setCartOpen(true)
   }
 
   const removeFromCart = (id) => setCart(prev => prev.filter(i => i.id !== id))
+
   const changeQty = (id, delta) => setCart(prev =>
     prev.map(i => {
       if (i.id !== id) return i
+      // CORREÇÃO — estoque já está convertido para Number quando salvo no cart
       const maxQty = i.estoque !== null && i.estoque !== undefined ? i.estoque : Infinity
       return { ...i, qty: Math.min(Math.max(1, i.qty + delta), maxQty) }
     })
   )
+
   const cartTotal = cart.reduce((s, i) => s + i.preco * i.qty, 0)
 
   const sendCartWhatsapp = () => {
@@ -121,7 +126,6 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
     const totalSnapshot = cartSnapshot.reduce((s, i) => s + i.preco * i.qty, 0)
 
     try {
-      // Registra pedido na API PHP
       await api.vendas.storePublic({
         cliente: {
           nome:     clienteData.nome.trim(),
@@ -137,7 +141,6 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
         })),
       })
 
-      // Monta mensagem WhatsApp
       const linhasMsg = cartSnapshot.map(i =>
         `• *${i.nome}* x${i.qty} — R$ ${(i.preco * i.qty).toFixed(2).replace('.', ',')}`
       )
@@ -166,7 +169,6 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
     }
   }
 
-  // Depoimentos: usa banco se tiver, senão padrão
   const deps = depoimentos.length > 0 ? depoimentos : [
     { id:1, nome:'Fernanda Lima', cidade:'Fortaleza, CE', inicial:'F', cor:'text-sage', bg:'bg-sage/30',
       texto:'O sérum de vitamina C da YOU360 transformou minha pele em apenas 3 semanas. Manchas sumidas e pele completamente iluminada!' },
@@ -338,7 +340,6 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
               </div>
             </div>
           </div>
-          {/* Hero visual */}
           <div className="relative flex justify-center items-center reveal reveal-delay-2">
             <div className="absolute w-[320px] h-[320px] md:w-[420px] md:h-[420px] rounded-full border border-sage/20 animate-spin" style={{ animationDuration: '20s' }}/>
             <div className="absolute w-[260px] h-[260px] md:w-[340px] md:h-[340px] rounded-full border border-blush/30 animate-spin" style={{ animationDuration: '14s', animationDirection: 'reverse' }}/>
@@ -626,7 +627,6 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
   )
 }
 
-// Sub-components
 function BannerIcon({ index }) {
   const icons = ['🧴','🌸','✨']
   return <span className="text-8xl opacity-20">{icons[index]}</span>

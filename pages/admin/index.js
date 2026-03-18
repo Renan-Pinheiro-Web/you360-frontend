@@ -1,5 +1,5 @@
 // pages/admin/index.js
-// YOU360 — Painel Admin completo (estilo Essence Aura + API PHP)
+// YOU360 — Painel Admin completo
 
 import Head from 'next/head'
 import { useEffect, useState, useRef, useCallback } from 'react'
@@ -20,8 +20,8 @@ const BADGES     = ['', 'NOVO', 'DESTAQUE', 'EXCLUSIVO', 'LIMITADO', 'MAIS VENDI
 const EMPTY_PROD = { nome:'', linha:'skincare', fragrancia:'', descricao:'', preco:'', badge:'', ativo:true, imagem_url:'', estoque:'' }
 const EMPTY_DEP  = { nome:'', cidade:'', texto:'', inicial:'', cor:'text-sage', bg:'bg-sage/30', ativo:true }
 
-const fmtBRL  = v => `R$ ${Number(v).toFixed(2).replace('.', ',')}`
-const fmtDate = s => s ? new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
+const fmtBRL      = v => `R$ ${Number(v).toFixed(2).replace('.', ',')}`
+const fmtDate     = s => s ? new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—'
 const fmtDateTime = s => s ? new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 
 export default function AdminPage() {
@@ -103,12 +103,10 @@ export default function AdminPage() {
 
         {/* ── MAIN ── */}
         <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-          {/* Mobile header */}
           <div className="md:hidden flex items-center justify-between px-5 py-4 border-b border-white/8">
             <span className="font-display text-lg font-light tracking-widest text-white">YOU<strong className="text-sage">360</strong></span>
             <button onClick={handleLogout} className="font-body text-xs text-white/40 hover:text-white">Sair</button>
           </div>
-          {/* Mobile tabs */}
           <div className="md:hidden flex border-b border-white/8 overflow-x-auto">
             {[{key:'hero',label:'HERO'},{key:'linhas',label:'LINHAS'},{key:'produtos',label:'PRODUTOS'},{key:'depoimentos',label:'DEP.'},{key:'vendas',label:'VENDAS'},{key:'clientes',label:'CLIENTES'}].map(t => (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -117,7 +115,6 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
-
           {activeTab === 'hero'        && <HeroSection      showToast={showToast}/>}
           {activeTab === 'linhas'      && <LinhasSection     showToast={showToast}/>}
           {activeTab === 'produtos'    && <ProdutosSection   showToast={showToast} setDeleteConfirm={setDeleteConfirm}/>}
@@ -127,7 +124,6 @@ export default function AdminPage() {
         </main>
       </div>
 
-      {/* Toast global */}
       {toast && (
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 font-body text-sm shadow-xl flex items-center gap-3
           ${toast.type==='error' ? 'bg-red-900 text-red-200 border border-red-700' : 'bg-sage text-white'}`}>
@@ -172,6 +168,34 @@ export default function AdminPage() {
 
 
 // ══════════════════════════════════════════════════════════════
+//  UPLOAD HELPER — reutilizado por Hero, Linhas e Produtos
+// ══════════════════════════════════════════════════════════════
+function UploadButton({ onUpload, uploading }) {
+  const fileRef = useRef()
+  const handleChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const tiposPermitidos = ['image/jpeg','image/png','image/webp','image/gif']
+    if (!tiposPermitidos.includes(file.type)) { alert('Formato inválido. Use JPG, PNG ou WEBP.'); return }
+    if (file.size > 5 * 1024 * 1024) { alert('Imagem muito grande. Máximo 5MB.'); return }
+    await onUpload(file)
+    e.target.value = ''
+  }
+  return (
+    <>
+      <input ref={fileRef} type="file" accept="image/*" onChange={handleChange} className="hidden"/>
+      <button type="button" onClick={() => fileRef.current.click()} disabled={uploading}
+        className="font-body text-xs tracking-widest border border-white/20 text-white/50 px-4 py-2 hover:border-sage hover:text-sage transition-all disabled:opacity-50 flex items-center gap-2">
+        {uploading
+          ? <><div className="w-3 h-3 border border-sage/50 border-t-sage rounded-full animate-spin"/>ENVIANDO...</>
+          : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>FAZER UPLOAD</>}
+      </button>
+    </>
+  )
+}
+
+
+// ══════════════════════════════════════════════════════════════
 //  ABA A — HERO
 // ══════════════════════════════════════════════════════════════
 function HeroSection({ showToast }) {
@@ -180,6 +204,7 @@ function HeroSection({ showToast }) {
   const [urlInput,     setUrlInput]     = useState('')
   const [loading,      setLoading]      = useState(true)
   const [saving,       setSaving]       = useState(false)
+  const [uploading,    setUploading]    = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
 
   useEffect(() => {
@@ -192,6 +217,18 @@ function HeroSection({ showToast }) {
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
+
+  // MELHORIA — upload na seção Hero
+  const handleUpload = async (file) => {
+    setUploading(true)
+    try {
+      const result = await api.upload.image(file)
+      const url = result.url || result
+      setUrlInput(url); setImgPreview(url)
+      showToast('Imagem enviada!')
+    } catch (err) { showToast(err.message||'Erro no upload','error') }
+    finally { setUploading(false) }
+  }
 
   const handleSave = async (e) => {
     e.preventDefault(); setSaving(true)
@@ -225,27 +262,30 @@ function HeroSection({ showToast }) {
                   ? <img src={imgPreview} alt="preview" className="w-full h-full object-contain p-2"/>
                   : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="1" opacity=".5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M3 21l5-5 4 4 4-5 5 6"/></svg>}
               </div>
-              <div className="flex-1">
-                <p className="font-body text-xs text-white/40 mb-2 tracking-widest">URL DA IMAGEM</p>
+              <div className="flex-1 space-y-2">
+                <p className="font-body text-xs text-white/40 tracking-widest">URL DA IMAGEM</p>
                 <input
                   value={urlInput}
                   onChange={e => { setUrlInput(e.target.value); setImgPreview(e.target.value) }}
                   placeholder="https://exemplo.com/imagem.jpg"
-                  className="admin-input mb-2"
+                  className="admin-input"
                 />
+                <div className="flex items-center gap-3">
+                  <UploadButton onUpload={handleUpload} uploading={uploading}/>
+                  <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
+                </div>
                 {imgPreview && !clearConfirm && (
                   <button type="button" onClick={() => setClearConfirm(true)} className="font-body text-xs text-red-400/60 hover:text-red-400 transition-colors block">Remover imagem</button>
                 )}
                 {clearConfirm && (
-                  <div className="border border-red-500/30 px-3 py-2 mb-2" style={{ background:'rgba(220,38,38,0.08)' }}>
+                  <div className="border border-red-500/30 px-3 py-2" style={{ background:'rgba(220,38,38,0.08)' }}>
                     <p className="font-body text-xs text-red-300 mb-2">Tem certeza?</p>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => { setUrlInput(''); setImgPreview(''); setForm(f=>({...f,imagem_url:''})); setClearConfirm(false) }} className="font-body text-xs bg-red-700 text-white px-3 py-1">SIM</button>
+                      <button type="button" onClick={() => { setUrlInput(''); setImgPreview(''); setClearConfirm(false) }} className="font-body text-xs bg-red-700 text-white px-3 py-1">SIM</button>
                       <button type="button" onClick={() => setClearConfirm(false)} className="font-body text-xs border border-white/20 text-white/50 px-3 py-1">CANCELAR</button>
                     </div>
                   </div>
                 )}
-                <p className="font-body text-xs text-white/25">Cole a URL de uma imagem pública</p>
               </div>
             </div>
           </div>
@@ -255,7 +295,7 @@ function HeroSection({ showToast }) {
           <FormField label="PREÇO (R$)">
             <input type="number" step="0.01" min="0" value={form.preco} onChange={e => setForm({...form,preco:e.target.value})} placeholder="189.90" className="admin-input"/>
           </FormField>
-          <button type="submit" disabled={saving} className="w-full bg-sage text-white font-body text-xs tracking-widest py-4 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+          <button type="submit" disabled={saving||uploading} className="w-full bg-sage text-white font-body text-xs tracking-widest py-4 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
             {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
             {saving ? 'SALVANDO...' : 'SALVAR PRODUTO INICIAL'}
           </button>
@@ -272,9 +312,10 @@ function HeroSection({ showToast }) {
 const LINHA_BG_LABELS = ['Linha 1 — Fundo verde/rosado','Linha 2 — Fundo escuro · Destaque','Linha 3 — Fundo rosado']
 
 function LinhasSection({ showToast }) {
-  const [loading, setLoading]   = useState(true)
-  const [saving,  setSaving]    = useState(null)
-  const [forms,   setForms]     = useState([
+  const [loading,    setLoading]    = useState(true)
+  const [saving,     setSaving]     = useState(null)
+  const [uploading,  setUploading]  = useState([false, false, false])
+  const [forms,      setForms]      = useState([
     {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
     {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
     {nome_linha:'',titulo:'',subtitulo:'',descricao:'',imagem_url:''},
@@ -294,14 +335,26 @@ function LinhasSection({ showToast }) {
 
   const updateForm = (idx, field, value) => setForms(forms.map((f,i) => i===idx ? {...f,[field]:value} : f))
 
+  // MELHORIA — upload por linha
+  const handleUpload = async (idx, file) => {
+    const upd = [...uploading]; upd[idx] = true; setUploading(upd)
+    try {
+      const result = await api.upload.image(file)
+      const url = result.url || result
+      updateForm(idx, 'imagem_url', url)
+      showToast(`Imagem da Linha ${idx+1} enviada!`)
+    } catch (err) { showToast(err.message||'Erro no upload','error') }
+    finally { const upd2 = [...uploading]; upd2[idx] = false; setUploading(upd2) }
+  }
+
   const handleSave = async (e, idx) => {
     e.preventDefault(); setSaving(idx+1)
     try {
       await api.linhas.update(idx+1, {
         nome_linha: forms[idx].nome_linha.trim(),
-        titulo: forms[idx].titulo.trim()||null,
-        subtitulo: forms[idx].subtitulo.trim()||null,
-        descricao: forms[idx].descricao.trim()||null,
+        titulo:     forms[idx].titulo.trim()||null,
+        subtitulo:  forms[idx].subtitulo.trim()||null,
+        descricao:  forms[idx].descricao.trim()||null,
         imagem_url: forms[idx].imagem_url.trim()||null,
       })
       showToast(`Linha ${idx+1} atualizada!`)
@@ -329,13 +382,17 @@ function LinhasSection({ showToast }) {
               </div>
             </div>
             <form onSubmit={(e) => handleSave(e,idx)} className="space-y-4">
-              <FormField label="URL DA IMAGEM">
-                <div className="flex gap-3 items-start">
+              <FormField label="IMAGEM">
+                <div className="space-y-2">
                   {form.imagem_url && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={form.imagem_url} alt="preview" className="w-16 h-20 object-cover border border-white/10 flex-shrink-0"/>
+                    <img src={form.imagem_url} alt="preview" className="w-16 h-20 object-cover border border-white/10"/>
                   )}
                   <input value={form.imagem_url} onChange={e => updateForm(idx,'imagem_url',e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
+                  <div className="flex items-center gap-3">
+                    <UploadButton onUpload={(file) => handleUpload(idx, file)} uploading={uploading[idx]}/>
+                    <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
+                  </div>
                 </div>
               </FormField>
               <FormField label="NOME DA LINHA">
@@ -348,7 +405,7 @@ function LinhasSection({ showToast }) {
               <FormField label="DESCRIÇÃO CURTA">
                 <input value={form.descricao} onChange={e => updateForm(idx,'descricao',e.target.value)} placeholder="Ex: Vitamina C, Colágeno & Ácido Hialurônico" className="admin-input"/>
               </FormField>
-              <button type="submit" disabled={saving===idx+1} className="w-full bg-sage/20 border border-sage/40 text-sage font-body text-xs tracking-widest py-3 hover:bg-sage hover:text-white hover:border-sage transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+              <button type="submit" disabled={saving===idx+1||uploading[idx]} className="w-full bg-sage/20 border border-sage/40 text-sage font-body text-xs tracking-widest py-3 hover:bg-sage hover:text-white hover:border-sage transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving===idx+1 && <div className="w-4 h-4 border-2 border-sage/30 border-t-sage rounded-full animate-spin"/>}
                 {saving===idx+1 ? 'SALVANDO...' : `SALVAR LINHA ${idx+1}`}
               </button>
@@ -378,8 +435,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
   const [priceHistory, setPriceHistory] = useState(null)
   const [galleryProd,  setGalleryProd]  = useState(null)
   const [deleting,     setDeleting]     = useState(null)
-  const [uploading,    setUploading]    = useState(false)  // MELHORIA 1
-  const fileRef = useRef()                                  // MELHORIA 1
+  const [uploading,    setUploading]    = useState(false)
 
   const dragItem  = useRef(null)
   const dragOver  = useRef(null)
@@ -388,10 +444,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
 
   const fetchProducts = async () => {
     setLoading(true)
-    try {
-      const data = await api.adminProducts.list()
-      setProducts(data||[])
-    } catch {}
+    try { const data = await api.adminProducts.list(); setProducts(data||[]) } catch {}
     setLoading(false)
   }
 
@@ -428,18 +481,14 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
 
   const handleDuplicate = async (p) => {
     setDuplicating(p.id)
-    try {
-      await api.adminProducts.duplicate(p.id)
-      showToast(`"${p.nome}" duplicado!`); fetchProducts()
-    } catch (err) { showToast(err.message||'Erro','error') }
+    try { await api.adminProducts.duplicate(p.id); showToast(`"${p.nome}" duplicado!`); fetchProducts() }
+    catch (err) { showToast(err.message||'Erro','error') }
     finally { setDuplicating(null) }
   }
 
   const openPriceHistory = async (p) => {
-    try {
-      const data = await api.adminProducts.priceHistory(p.id)
-      setPriceHistory({ produto:p, historico:data||[] })
-    } catch { setPriceHistory({ produto:p, historico:[] }) }
+    try { const data = await api.adminProducts.priceHistory(p.id); setPriceHistory({ produto:p, historico:data||[] }) }
+    catch { setPriceHistory({ produto:p, historico:[] }) }
   }
 
   const openNew  = () => { setEditingId(null); setForm(EMPTY_PROD); setShowForm(true) }
@@ -450,20 +499,14 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
   }
   const closeForm = () => { setShowForm(false); setEditingId(null) }
 
-  // MELHORIA 1 — upload de arquivo
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const tiposPermitidos = ['image/jpeg','image/png','image/webp','image/gif']
-    if (!tiposPermitidos.includes(file.type)) return showToast('Formato inválido. Use JPG, PNG ou WEBP.','error')
-    if (file.size > 5 * 1024 * 1024) return showToast('Imagem muito grande. Máximo 5MB.','error')
+  const handleFileUpload = async (file) => {
     setUploading(true)
     try {
       const result = await api.upload.image(file)
       setForm(f => ({...f, imagem_url: result.url || result}))
       showToast('Imagem enviada!')
     } catch (err) { showToast(err.message||'Erro no upload','error') }
-    finally { setUploading(false); e.target.value = '' }
+    finally { setUploading(false) }
   }
 
   const handleSave = async (e) => {
@@ -474,13 +517,8 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
     try {
       const estoqueVal = form.estoque===''||form.estoque===null ? null : parseInt(form.estoque)
       const payload = { nome:form.nome.trim(), linha:form.linha, fragrancia:form.fragrancia.trim(), descricao:form.descricao.trim(), preco:parseFloat(form.preco), badge:form.badge||null, ativo:form.ativo, imagem_url:form.imagem_url.trim()||null, estoque:estoqueVal }
-      if (editingId) {
-        await api.adminProducts.update(editingId, payload)
-        showToast('Produto atualizado!')
-      } else {
-        await api.adminProducts.create({...payload, ordem:products.length})
-        showToast('Produto cadastrado!')
-      }
+      if (editingId) { await api.adminProducts.update(editingId, payload); showToast('Produto atualizado!') }
+      else { await api.adminProducts.create({...payload, ordem:products.length}); showToast('Produto cadastrado!') }
       closeForm(); fetchProducts()
     } catch (err) { showToast(err.message||'Erro','error') }
     finally { setSaving(false) }
@@ -559,7 +597,6 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                     </div>
                   )}
 
-                  {/* Thumb */}
                   <div className="w-12 h-12 md:w-14 md:h-14 flex-shrink-0 overflow-hidden" style={{background:'rgba(74,124,89,0.15)'}}>
                     {p.imagem_url
                       // eslint-disable-next-line @next/next/no-img-element
@@ -567,7 +604,6 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                       : <div className="w-full h-full flex items-center justify-center text-sage/40"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M3 21l5-5 4 4 4-5 5 6"/></svg></div>}
                   </div>
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-display text-base md:text-lg font-light text-white truncate">{p.nome}</p>
@@ -576,8 +612,8 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {p.linha && <span className="font-body text-xs text-white/30 tracking-widest uppercase">{p.linha}</span>}
-                      {/* MELHORIA 2 — conversão para Number antes de comparar */}
-                      {Number(p.estoque) >= 0 && p.estoque !== null && p.estoque !== undefined && (
+                      {/* CORREÇÃO — Number() antes de comparar */}
+                      {p.estoque !== null && p.estoque !== undefined && (
                         <span className={`font-body text-xs px-1.5 py-0.5 ${Number(p.estoque)<=0 ? 'bg-red-900/30 text-red-400' : Number(p.estoque)<=5 ? 'bg-orange-900/30 text-orange-400' : 'bg-sage/10 text-sage/70'}`}>
                           {Number(p.estoque)<=0 ? 'ESGOTADO' : `${p.estoque} un.`}
                         </span>
@@ -585,7 +621,6 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                     </div>
                   </div>
 
-                  {/* Preço + toggle — sempre visíveis */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <p className="font-display text-base md:text-xl font-light text-white">{fmtBRL(p.preco)}</p>
                     <button onClick={() => toggleAtivo(p)}
@@ -595,45 +630,51 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                   </div>
                 </div>
 
-                {/* MELHORIA 5 — Barra de ações responsiva */}
-                <div className="flex items-center justify-end gap-1 px-3 pb-3 md:px-4 md:pb-4 md:pt-0 border-t border-white/5 md:border-t-0 md:absolute md:top-1/2 md:-translate-y-1/2 md:right-4"
-                  style={{}}>
-                  {/* Em desktop: posição absolute dentro do card — Em mobile: barra na base */}
-                  <button onClick={() => openEdit(p)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs md:text-base"
-                    title="Editar">
+                {/* CORREÇÃO — Barra de ações: desktop inline, mobile na base */}
+                <div className="md:hidden flex items-center gap-1 px-3 pb-3 border-t border-white/5 pt-2">
+                  <button onClick={() => openEdit(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    <span className="md:hidden">Editar</span>
+                    Editar
                   </button>
-                  <button onClick={() => handleDuplicate(p)} disabled={duplicating===p.id}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all disabled:opacity-50 font-body text-xs"
-                    title="Duplicar">
-                    {duplicating===p.id
-                      ? <div className="w-3 h-3 border border-sage border-t-transparent rounded-full animate-spin"/>
-                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>}
-                    <span className="md:hidden">Duplicar</span>
+                  <button onClick={() => handleDuplicate(p)} disabled={duplicating===p.id} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all disabled:opacity-50 font-body text-xs">
+                    {duplicating===p.id ? <div className="w-3 h-3 border border-sage border-t-transparent rounded-full animate-spin"/> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>}
+                    Duplicar
                   </button>
-                  <button onClick={() => setGalleryProd(p)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs"
-                    title="Galeria">
+                  <button onClick={() => setGalleryProd(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    <span className="md:hidden">Galeria</span>
+                    Galeria
                   </button>
-                  <button onClick={() => openPriceHistory(p)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs"
-                    title="Histórico de preços">
+                  <button onClick={() => openPriceHistory(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                    <span className="md:hidden">Preços</span>
+                    Preços
                   </button>
-                  <button onClick={() => handleDelete(p)} disabled={deleting===p.id}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 md:w-8 md:h-8 md:p-0 md:justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50 font-body text-xs"
-                    title="Excluir">
-                    {deleting===p.id
-                      ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
-                      : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>}
-                    <span className="md:hidden">Excluir</span>
+                  <button onClick={() => handleDelete(p)} disabled={deleting===p.id} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50 font-body text-xs">
+                    {deleting===p.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
+                    Excluir
                   </button>
                 </div>
+
+                {/* Desktop — botões inline na linha principal (sem absolute) */}
+                <div className="hidden md:flex items-center gap-1.5 px-4 pb-4 justify-end">
+                  <button onClick={() => openEdit(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Editar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button onClick={() => handleDuplicate(p)} disabled={duplicating===p.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all disabled:opacity-50" title="Duplicar">
+                    {duplicating===p.id ? <div className="w-3 h-3 border border-sage border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>}
+                  </button>
+                  <button onClick={() => setGalleryProd(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Galeria">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  </button>
+                  <button onClick={() => openPriceHistory(p)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all" title="Histórico de preços">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </button>
+                  <button onClick={() => handleDelete(p)} disabled={deleting===p.id} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-50" title="Excluir">
+                    {deleting===p.id ? <div className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin"/>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>}
+                  </button>
+                </div>
+
               </div>
             ))}
           </div>
@@ -697,11 +738,8 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                   </p>
                 </div>
               )}
-
-              {/* MELHORIA 1 — campo de imagem com upload + URL */}
               <FormField label="IMAGEM PRINCIPAL">
                 <div className="space-y-3">
-                  {/* Preview */}
                   {form.imagem_url && (
                     <div className="flex items-center gap-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -709,27 +747,13 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                       <p className="font-body text-xs text-white/40 truncate flex-1">{form.imagem_url}</p>
                     </div>
                   )}
-                  {/* Input URL */}
-                  <input
-                    value={form.imagem_url}
-                    onChange={e=>setForm({...form,imagem_url:e.target.value})}
-                    placeholder="https://exemplo.com/imagem.jpg"
-                    className="admin-input"
-                  />
-                  {/* Botão upload */}
+                  <input value={form.imagem_url} onChange={e=>setForm({...form,imagem_url:e.target.value})} placeholder="https://exemplo.com/imagem.jpg" className="admin-input"/>
                   <div className="flex items-center gap-3">
-                    <input ref={fileRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden"/>
-                    <button type="button" onClick={() => fileRef.current.click()} disabled={uploading}
-                      className="font-body text-xs tracking-widest border border-white/20 text-white/50 px-4 py-2 hover:border-sage hover:text-sage transition-all disabled:opacity-50 flex items-center gap-2">
-                      {uploading
-                        ? <><div className="w-3 h-3 border border-sage/50 border-t-sage rounded-full animate-spin"/>ENVIANDO...</>
-                        : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>FAZER UPLOAD</>}
-                    </button>
+                    <UploadButton onUpload={handleFileUpload} uploading={uploading}/>
                     <p className="font-body text-xs text-white/25">PNG, JPG ou WEBP. Máx 5MB.</p>
                   </div>
                 </div>
               </FormField>
-
               <div className="flex items-center justify-between py-2">
                 <div><p className="font-body text-sm text-white">Produto ativo</p><p className="font-body text-xs text-white/30">Produtos inativos não aparecem na loja</p></div>
                 <button type="button" onClick={()=>setForm({...form,ativo:!form.ativo})} className={`w-12 h-6 rounded-full transition-all duration-300 relative ${form.ativo?'bg-sage':'bg-white/15'}`}>
@@ -767,7 +791,6 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                 <div className="space-y-2 mt-3">
                   {priceHistory.historico.map((h,i) => {
                     const subiu = h.preco_novo > h.preco_anterior
-                    const data  = fmtDateTime(h.created_at)
                     return (
                       <div key={i} className="flex items-center justify-between py-3 border-b border-white/5">
                         <div>
@@ -775,7 +798,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                             <span className={`font-body text-xs ${subiu?'text-red-400':'text-sage'}`}>{subiu?'▲':'▼'} {fmtBRL(h.preco_novo)}</span>
                             <span className="font-body text-xs text-white/20">de {fmtBRL(h.preco_anterior)}</span>
                           </div>
-                          <p className="font-body text-xs text-white/25 mt-0.5">{data}</p>
+                          <p className="font-body text-xs text-white/25 mt-0.5">{fmtDateTime(h.created_at)}</p>
                         </div>
                         <span className={`font-body text-xs px-2 py-0.5 ${subiu?'bg-red-400/10 text-red-400':'bg-sage/10 text-sage'}`}>
                           {subiu?`+${fmtBRL(h.preco_novo-h.preco_anterior)}`:`-${fmtBRL(h.preco_anterior-h.preco_novo)}`}
@@ -790,7 +813,6 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
         </div>
       )}
 
-      {/* Modal galeria */}
       {galleryProd && (
         <GaleriaModal produto={galleryProd} showToast={showToast} onClose={() => setGalleryProd(null)}/>
       )}
@@ -803,18 +825,16 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
 //  GALERIA DE IMAGENS
 // ══════════════════════════════════════════════════════════════
 function GaleriaModal({ produto, showToast, onClose }) {
-  const [galeria,   setGaleria]   = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [adding,    setAdding]    = useState(false)
-  const [urlInput,  setUrlInput]  = useState('')
-  const [deleteId,  setDeleteId]  = useState(null)
+  const [galeria,  setGaleria]  = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [adding,   setAdding]   = useState(false)
+  const [urlInput, setUrlInput] = useState('')
+  const [deleteId, setDeleteId] = useState(null)
 
   const fetchGaleria = async () => {
     setLoading(true)
-    try {
-      const data = await api.products.gallery(produto.id)
-      setGaleria(data||[])
-    } catch { setGaleria([]) }
+    try { const data = await api.products.gallery(produto.id); setGaleria(data||[]) }
+    catch { setGaleria([]) }
     setLoading(false)
   }
 
@@ -823,21 +843,15 @@ function GaleriaModal({ produto, showToast, onClose }) {
   const handleAdd = async () => {
     if (!urlInput.trim()) return showToast('Cole uma URL de imagem','error')
     setAdding(true)
-    try {
-      await api.adminProducts.addGallery(produto.id, urlInput.trim())
-      showToast('Foto adicionada!')
-      setUrlInput('')
-      fetchGaleria()
-    } catch (err) { showToast(err.message||'Erro ao adicionar','error') }
+    try { await api.adminProducts.addGallery(produto.id, urlInput.trim()); showToast('Foto adicionada!'); setUrlInput(''); fetchGaleria() }
+    catch (err) { showToast(err.message||'Erro ao adicionar','error') }
     finally { setAdding(false) }
   }
 
   const handleDelete = async (id) => {
     setDeleteId(id)
-    try {
-      await api.adminProducts.removeGallery(produto.id, id)
-      showToast('Foto removida!'); fetchGaleria()
-    } catch { showToast('Erro ao remover foto','error') }
+    try { await api.adminProducts.removeGallery(produto.id, id); showToast('Foto removida!'); fetchGaleria() }
+    catch { showToast('Erro ao remover foto','error') }
     finally { setDeleteId(null) }
   }
 
@@ -881,8 +895,7 @@ function GaleriaModal({ produto, showToast, onClose }) {
                   <div className="absolute inset-0 bg-obsidian/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button onClick={() => handleDelete(img.id)} disabled={deleteId===img.id}
                       className="w-9 h-9 bg-red-700 flex items-center justify-center hover:bg-red-800 transition-all disabled:opacity-50">
-                      {deleteId===img.id
-                        ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                      {deleteId===img.id ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
                         : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>}
                     </button>
                   </div>
@@ -941,13 +954,8 @@ function DepoimentosSection({ showToast }) {
     setSaving(true)
     try {
       const payload = { nome:form.nome.trim(), cidade:form.cidade.trim()||null, texto:form.texto.trim(), inicial:form.inicial.trim()||form.nome.trim().charAt(0).toUpperCase(), cor:form.cor, bg:form.bg, ativo:form.ativo }
-      if (editingId) {
-        await api.depoimentos.update(editingId, payload)
-        showToast('Depoimento atualizado!')
-      } else {
-        await api.depoimentos.create({...payload, ordem:deps.length})
-        showToast('Depoimento adicionado!')
-      }
+      if (editingId) { await api.depoimentos.update(editingId, payload); showToast('Depoimento atualizado!') }
+      else { await api.depoimentos.create({...payload, ordem:deps.length}); showToast('Depoimento adicionado!') }
       closeForm(); fetchDeps()
     } catch (err) { showToast(err.message||'Erro','error') }
     finally { setSaving(false) }
@@ -956,10 +964,8 @@ function DepoimentosSection({ showToast }) {
   const handleDelete = async () => {
     if (!confirmDel) return
     setDeleteId(confirmDel.id)
-    try {
-      await api.depoimentos.remove(confirmDel.id)
-      showToast('Depoimento excluído!'); setConfirmDel(null); fetchDeps()
-    } catch { showToast('Erro ao excluir','error') }
+    try { await api.depoimentos.remove(confirmDel.id); showToast('Depoimento excluído!'); setConfirmDel(null); fetchDeps() }
+    catch { showToast('Erro ao excluir','error') }
     finally { setDeleteId(null) }
   }
 
@@ -1003,7 +1009,7 @@ function DepoimentosSection({ showToast }) {
                   <p className="font-display text-sm font-light text-white/60 italic leading-relaxed line-clamp-2">"{d.texto}"</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button onClick={() => toggleAtivo(d)} className={`w-9 h-5 rounded-full transition-all duration-300 relative ${d.ativo?'bg-sage':'bg-white/15'}`} title={d.ativo?'Desativar':'Ativar'}>
+                  <button onClick={() => toggleAtivo(d)} className={`w-9 h-5 rounded-full transition-all duration-300 relative ${d.ativo?'bg-sage':'bg-white/15'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${d.ativo?'left-4':'left-0.5'}`}/>
                   </button>
                   <button onClick={() => openEdit(d)} className="w-8 h-8 flex items-center justify-center border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all">
@@ -1051,8 +1057,7 @@ function DepoimentosSection({ showToast }) {
                   </div>
                 </FormField>
               </div>
-
-              {/* MELHORIA 3 — fix quebra de texto no preview */}
+              {/* CORREÇÃO — fix quebra de texto no preview */}
               <div className="border border-white/8 p-4 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
                 <p className="font-body text-xs text-white/30 tracking-widest mb-3">PREVIEW</p>
                 <div className="flex items-start gap-3 min-w-0">
@@ -1060,19 +1065,12 @@ function DepoimentosSection({ showToast }) {
                     <span className={`font-display ${form.cor} text-lg`}>{form.inicial || form.nome?.charAt(0) || '?'}</span>
                   </div>
                   <div className="min-w-0 flex-1 overflow-hidden">
-                    <p className="font-body text-sm text-white font-medium"
-                      style={{overflowWrap:'break-word',wordBreak:'break-word'}}>
-                      {form.nome || 'Nome do cliente'}
-                    </p>
+                    <p className="font-body text-sm text-white font-medium" style={{overflowWrap:'break-word',wordBreak:'break-word'}}>{form.nome || 'Nome do cliente'}</p>
                     <p className="font-body text-xs text-white/40">{form.cidade || 'Cidade, Estado'}</p>
-                    <p className="font-display text-sm font-light text-white/60 italic mt-1"
-                      style={{overflowWrap:'break-word',wordBreak:'break-word',whiteSpace:'normal'}}>
-                      "{form.texto || 'Depoimento aparecerá aqui...'}"
-                    </p>
+                    <p className="font-display text-sm font-light text-white/60 italic mt-1" style={{overflowWrap:'break-word',wordBreak:'break-word',whiteSpace:'normal'}}>"{form.texto || 'Depoimento aparecerá aqui...'}"</p>
                   </div>
                 </div>
               </div>
-
               <div className="flex items-center justify-between py-2">
                 <div><p className="font-body text-sm text-white">Depoimento ativo</p><p className="font-body text-xs text-white/30">Inativos não aparecem na loja</p></div>
                 <button type="button" onClick={() => setForm({...form,ativo:!form.ativo})} className={`w-12 h-6 rounded-full transition-all duration-300 relative ${form.ativo?'bg-sage':'bg-white/15'}`}>
@@ -1118,7 +1116,7 @@ const PERIODOS = [
   { key:'custom', label:'Período' },
 ]
 
-function VendasSection({ showToast, setActiveTab }) {
+function VendasSection({ showToast }) {
   const [vendas,      setVendas]      = useState([])
   const [loading,     setLoading]     = useState(true)
   const [periodo,     setPeriodo]     = useState('mes')
@@ -1157,10 +1155,8 @@ function VendasSection({ showToast, setActiveTab }) {
   const handleDelete = async () => {
     if (!confirmDel) return
     setDeleteId(confirmDel.id)
-    try {
-      await api.vendas.remove(confirmDel.id)
-      showToast('Venda excluída!'); setConfirmDel(null); fetchVendas()
-    } catch (err) { showToast(err.message||'Erro ao excluir','error') }
+    try { await api.vendas.remove(confirmDel.id); showToast('Venda excluída!'); setConfirmDel(null); fetchVendas() }
+    catch (err) { showToast(err.message||'Erro ao excluir','error') }
     finally { setDeleteId(null) }
   }
 
@@ -1173,7 +1169,6 @@ function VendasSection({ showToast, setActiveTab }) {
         </div>
       </header>
 
-      {/* MELHORIA 4 — filtros + botão limpar */}
       <div className="px-6 md:px-8 py-3 border-b border-white/5 flex items-center gap-2 flex-wrap">
         {PERIODOS.map(p => (
           <button key={p.key} onClick={() => setPeriodo(p.key)}
@@ -1275,17 +1270,17 @@ function VendasSection({ showToast, setActiveTab }) {
 //  ABA F — CLIENTES
 // ══════════════════════════════════════════════════════════════
 function ClientesSection({ showToast }) {
-  const [clientes,   setClientes]   = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [search,     setSearch]     = useState('')
-  const [showForm,   setShowForm]   = useState(false)
-  const [editingId,  setEditingId]  = useState(null)
-  const [form,       setForm]       = useState({ nome:'', cidade:'', estado:'', whatsapp:'' })
-  const [saving,     setSaving]     = useState(false)
-  const [deleteId,   setDeleteId]   = useState(null)
-  const [confirmDel, setConfirmDel] = useState(null)
-  const [historico,  setHistorico]  = useState(null)
-  const [histLoading,setHistLoading]= useState(false)
+  const [clientes,    setClientes]    = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [search,      setSearch]      = useState('')
+  const [showForm,    setShowForm]    = useState(false)
+  const [editingId,   setEditingId]   = useState(null)
+  const [form,        setForm]        = useState({ nome:'', cidade:'', estado:'', whatsapp:'' })
+  const [saving,      setSaving]      = useState(false)
+  const [deleteId,    setDeleteId]    = useState(null)
+  const [confirmDel,  setConfirmDel]  = useState(null)
+  const [historico,   setHistorico]   = useState(null)
+  const [histLoading, setHistLoading] = useState(false)
 
   const fetchClientes = async () => {
     setLoading(true)
@@ -1330,13 +1325,8 @@ function ClientesSection({ showToast }) {
     setSaving(true)
     try {
       const payload = { nome:form.nome.trim(), cidade:form.cidade.trim(), estado:form.estado.trim().toUpperCase(), whatsapp:form.whatsapp }
-      if (editingId) {
-        await api.clientes.update(editingId, payload)
-        showToast('Cliente atualizado!')
-      } else {
-        await api.clientes.create(payload)
-        showToast('Cliente cadastrado!')
-      }
+      if (editingId) { await api.clientes.update(editingId, payload); showToast('Cliente atualizado!') }
+      else { await api.clientes.create(payload); showToast('Cliente cadastrado!') }
       setShowForm(false); fetchClientes()
     } catch (err) { showToast(err.message||'Erro','error') }
     finally { setSaving(false) }
@@ -1366,7 +1356,6 @@ function ClientesSection({ showToast }) {
           NOVO CLIENTE
         </button>
       </header>
-
       <div className="px-6 md:px-8 py-4 border-b border-white/5">
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1375,7 +1364,6 @@ function ClientesSection({ showToast }) {
             style={{background:'rgba(255,255,255,0.04)'}}/>
         </div>
       </div>
-
       <div className="flex-1 overflow-auto px-6 md:px-8 py-6">
         {loading ? <SectionLoader/> : filtered.length === 0 ? (
           <div className="text-center py-20">
@@ -1385,10 +1373,8 @@ function ClientesSection({ showToast }) {
         ) : (
           <div className="space-y-2">
             {filtered.map(c => (
-              <div key={c.id}
-                className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/20 transition-all cursor-pointer group"
-                style={{background:'rgba(255,255,255,0.02)'}}
-                onClick={() => openHistorico(c)}>
+              <div key={c.id} className="flex items-center gap-3 p-4 border border-white/8 hover:border-white/20 transition-all cursor-pointer group"
+                style={{background:'rgba(255,255,255,0.02)'}} onClick={() => openHistorico(c)}>
                 <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0 group-hover:bg-sage/30 transition-colors">
                   <span className="font-display text-sage text-lg">{c.nome?.charAt(0).toUpperCase()}</span>
                 </div>
@@ -1423,7 +1409,6 @@ function ClientesSection({ showToast }) {
         )}
       </div>
 
-      {/* Modal histórico */}
       {historico && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(6px)'}} onClick={() => setHistorico(null)}>
           <div className="w-full max-w-xl border border-white/10 max-h-[88vh] flex flex-col" style={{background:'#141414'}} onClick={e=>e.stopPropagation()}>
@@ -1496,7 +1481,6 @@ function ClientesSection({ showToast }) {
         </div>
       )}
 
-      {/* Modal form cliente */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(0,0,0,0.85)',backdropFilter:'blur(6px)'}}>
           <div className="w-full max-w-md border border-white/10" style={{background:'#141414'}}>
