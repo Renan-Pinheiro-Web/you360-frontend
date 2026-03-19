@@ -477,7 +477,12 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
   }
 
   const openPriceHistory = async (p) => {
-    try { const data = await api.adminProducts.priceHistory(p.id); setPriceHistory({ produto:p, historico:data||[] }) }
+    try {
+      const data = await api.adminProducts.priceHistory(p.id)
+      // BUG 3 CORRIGIDO — PHP retorna { produto, historico }, não array direto
+      const historico = data?.historico || (Array.isArray(data) ? data : [])
+      setPriceHistory({ produto:p, historico })
+    }
     catch { setPriceHistory({ produto:p, historico:[] }) }
   }
 
@@ -1306,16 +1311,25 @@ function ClientesSection({ showToast }) {
     setHistorico({ cliente:c, vendas:[], stats:null })
     setHistLoading(true)
     try {
-      const vendas = await api.clientes.historico(c.id)
-      const v = vendas||[]
+      // BUG 2 CORRIGIDO — PHP retorna { cliente, vendas, stats }, não array direto
+      const resultado = await api.clientes.historico(c.id)
+      const v = (resultado?.vendas || resultado || [])
       const confirmadas = v.filter(x => x.status !== 'cancelada')
-      const stats = {
+
+      // Se o PHP já retornou stats, usa — senão calcula no frontend
+      const statsBackend = resultado?.stats
+      const stats = statsBackend ? {
+        totalConfirm:   statsBackend.total_confirm   ?? statsBackend.totalConfirm   ?? confirmadas.length,
+        totalCancelada: statsBackend.total_cancelada ?? statsBackend.totalCancelada ?? v.filter(x => x.status==='cancelada').length,
+        totalGasto:     statsBackend.total_gasto     ?? statsBackend.totalGasto     ?? confirmadas.reduce((s,x) => s + Number(x.total), 0),
+        ticketMedio:    statsBackend.ticket_medio    ?? statsBackend.ticketMedio    ?? (confirmadas.length ? confirmadas.reduce((s,x) => s + Number(x.total), 0) / confirmadas.length : 0),
+        primeiraCompra: statsBackend.primeira_compra ?? statsBackend.primeiraCompra ?? (v.length ? v[v.length-1].created_at : null),
+        ultimaCompra:   statsBackend.ultima_compra   ?? statsBackend.ultimaCompra   ?? (v.length ? v[0].created_at : null),
+      } : {
         totalConfirm:   confirmadas.length,
         totalCancelada: v.filter(x => x.status==='cancelada').length,
         totalGasto:     confirmadas.reduce((s,x) => s + Number(x.total), 0),
-        ticketMedio:    confirmadas.length
-          ? confirmadas.reduce((s,x) => s + Number(x.total), 0) / confirmadas.length
-          : 0,
+        ticketMedio:    confirmadas.length ? confirmadas.reduce((s,x) => s + Number(x.total), 0) / confirmadas.length : 0,
         primeiraCompra: v.length ? v[v.length-1].created_at : null,
         ultimaCompra:   v.length ? v[0].created_at : null,
       }

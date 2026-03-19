@@ -7,9 +7,12 @@ import Link from 'next/link'
 export default function ProductCard({ product, delay = 0, onBuy }) {
   const [imgError, setImgError] = useState(false)
 
-  // CORREÇÃO — converter para Number antes de comparar (API retorna string)
-  const estoque  = product.estoque !== null && product.estoque !== undefined ? Number(product.estoque) : null
+  // Converte para Number — API pode retornar string
+  const estoque  = product.estoque !== null && product.estoque !== undefined
+    ? Number(product.estoque)
+    : null
   const esgotado = estoque !== null && estoque <= 0
+  const poucas   = estoque !== null && estoque > 0 && estoque <= 5
 
   const bgClass = [
     'bottle-bg-1','bottle-bg-2','bottle-bg-3',
@@ -42,14 +45,14 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
             </div>
           )}
 
-          {/* Badge */}
+          {/* Badge do produto */}
           {product.badge && (
             <div className="absolute top-3 left-3 bg-sage text-white font-body text-xs tracking-widest px-3 py-1">
               {product.badge}
             </div>
           )}
 
-          {/* Esgotado overlay */}
+          {/* Overlay esgotado */}
           {esgotado && (
             <div className="absolute inset-0 bg-obsidian/50 flex items-center justify-center">
               <span className="font-body text-xs tracking-widest text-white/70 border border-white/30 px-3 py-1">
@@ -58,8 +61,8 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
             </div>
           )}
 
-          {/* Estoque baixo — CORREÇÃO: usa variável estoque já convertida */}
-          {!esgotado && estoque !== null && estoque <= 5 && estoque > 0 && (
+          {/* Badge últimas unidades — só na imagem se poucas */}
+          {poucas && (
             <div className="absolute top-3 right-3 bg-blush-dark text-white font-body text-xs px-2 py-0.5">
               ÚLTIMAS {estoque}
             </div>
@@ -89,8 +92,25 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
         </Link>
 
         {product.fragrancia && (
-          <p className="font-body text-xs text-obsidian/40 italic mb-3 line-clamp-1">
+          <p className="font-body text-xs text-obsidian/40 italic mb-2 line-clamp-1">
             {product.fragrancia}
+          </p>
+        )}
+
+        {/* BUG 1 CORRIGIDO — Indicador de unidades na área de texto do card */}
+        {estoque !== null && (
+          <p className={`font-body text-xs mb-1 flex items-center gap-1.5 ${
+            esgotado ? 'text-red-400' : poucas ? 'text-orange-400' : 'text-sage/70'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full inline-block flex-shrink-0 ${
+              esgotado ? 'bg-red-400' : poucas ? 'bg-orange-400' : 'bg-sage/70'
+            }`}/>
+            {esgotado
+              ? 'Esgotado'
+              : poucas
+                ? `Últimas ${estoque} unidade${estoque > 1 ? 's' : ''}`
+                : `${estoque} unidades`
+            }
           </p>
         )}
 
