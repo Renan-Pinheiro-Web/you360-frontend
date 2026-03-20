@@ -8,17 +8,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        cream:       '#fafaf8',
-        sage:        '#4a7c59',
-        'sage-light':'#7aab89',
-        'sage-dark': '#2e5238',
-        blush:       '#e8c4c4',
-        'blush-dark':'#c9908d',
-        obsidian:    '#0f0f0f',
+        // ── Paleta YOU360 ──────────────────────────────────────
+        cream:        '#F7F4F1',   // Off-White (fundo principal)
+        sage:         '#D8C7A3',   // Dourado Pastel (cor de destaque primária)
+        'sage-light': '#E8DFC8',   // Dourado claro
+        'sage-dark':  '#B8A07A',   // Dourado escuro (hover)
+        blush:        '#E8E2D8',   // Bege Neutro
+        'blush-dark': '#B6B6B2',   // Cinza Médio
+        obsidian:     '#4F4F4F',   // Grafite Suave (texto principal)
       },
       fontFamily: {
-        display: ['Cormorant Garamond', 'serif'],
-        body:    ['Jost', 'sans-serif'],
+        display: ['Montserrat', 'sans-serif'],
+        body:    ['Inter', 'sans-serif'],
       },
     },
   },

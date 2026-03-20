@@ -3,7 +3,7 @@
    Tailwind base + design system completo
 ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -11,17 +11,19 @@
 
 /* ── Variáveis CSS ─────────────────────────────────────────── */
 :root {
-  --cream:       #fafaf8;
-  --sage:        #4a7c59;
-  --sage-light:  #7aab89;
-  --sage-dark:   #2e5238;
-  --blush:       #e8c4c4;
-  --blush-dark:  #c9908d;
-  --obsidian:    #0f0f0f;
+  --cream: #f7f4f1; /* Off-White — fundo principal */
+  --sage: #d8c7a3; /* Dourado Pastel — destaque primário */
+  --sage-light: #e8dfc8; /* Dourado claro */
+  --sage-dark: #b8a07a; /* Dourado escuro — hover */
+  --blush: #e8e2d8; /* Bege Neutro */
+  --blush-dark: #b6b6b2; /* Cinza Médio */
+  --obsidian: #4f4f4f; /* Grafite Suave — texto */
 }
 
 /* ── Reset & Base ──────────────────────────────────────────── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -34,7 +36,7 @@ html {
 body {
   background-color: var(--cream);
   color: var(--obsidian);
-  font-family: 'Jost', sans-serif;
+  font-family: "Inter", sans-serif;
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -43,62 +45,129 @@ body {
 
 /* ── Tipografia ────────────────────────────────────────────── */
 .font-display {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: "Montserrat", sans-serif;
 }
 
 .font-body {
-  font-family: 'Jost', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Cormorant Garamond', serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Montserrat", sans-serif;
   font-weight: 300;
 }
 
 /* ── Cores Tailwind customizadas ───────────────────────────── */
-.text-sage        { color: var(--sage); }
-.text-sage-light  { color: var(--sage-light); }
-.text-sage-dark   { color: var(--sage-dark); }
-.text-blush       { color: var(--blush); }
-.text-blush-dark  { color: var(--blush-dark); }
-.text-obsidian    { color: var(--obsidian); }
-.text-cream       { color: var(--cream); }
+.text-sage {
+  color: var(--sage);
+}
+.text-sage-light {
+  color: var(--sage-light);
+}
+.text-sage-dark {
+  color: var(--sage-dark);
+}
+.text-blush {
+  color: var(--blush);
+}
+.text-blush-dark {
+  color: var(--blush-dark);
+}
+.text-obsidian {
+  color: var(--obsidian);
+}
+.text-cream {
+  color: var(--cream);
+}
 
-.bg-sage        { background-color: var(--sage); }
-.bg-sage-light  { background-color: var(--sage-light); }
-.bg-sage-dark   { background-color: var(--sage-dark); }
-.bg-blush       { background-color: var(--blush); }
-.bg-blush-dark  { background-color: var(--blush-dark); }
-.bg-obsidian    { background-color: var(--obsidian); }
-.bg-cream       { background-color: var(--cream); }
+.bg-sage {
+  background-color: var(--sage);
+}
+.bg-sage-light {
+  background-color: var(--sage-light);
+}
+.bg-sage-dark {
+  background-color: var(--sage-dark);
+}
+.bg-blush {
+  background-color: var(--blush);
+}
+.bg-blush-dark {
+  background-color: var(--blush-dark);
+}
+.bg-obsidian {
+  background-color: var(--obsidian);
+}
+.bg-cream {
+  background-color: var(--cream);
+}
 
-.border-sage        { border-color: var(--sage); }
-.border-sage-light  { border-color: var(--sage-light); }
-.border-blush-dark  { border-color: var(--blush-dark); }
-.border-obsidian    { border-color: var(--obsidian); }
+.border-sage {
+  border-color: var(--sage);
+}
+.border-sage-light {
+  border-color: var(--sage-light);
+}
+.border-blush-dark {
+  border-color: var(--blush-dark);
+}
+.border-obsidian {
+  border-color: var(--obsidian);
+}
 
-/* Opacidades utilitárias */
-.bg-sage\/10  { background-color: rgba(74,124,89,0.10); }
-.bg-sage\/15  { background-color: rgba(74,124,89,0.15); }
-.bg-sage\/20  { background-color: rgba(74,124,89,0.20); }
-.bg-sage\/30  { background-color: rgba(74,124,89,0.30); }
-.bg-blush\/30 { background-color: rgba(232,196,196,0.30); }
-.bg-blush\/20 { background-color: rgba(232,196,196,0.20); }
-.bg-sage\/8   { background-color: rgba(74,124,89,0.08); }
+/* Opacidades utilitárias — RGB do Dourado Pastel #D8C7A3 = 216,199,163 */
+.bg-sage\/10 {
+  background-color: rgba(216, 199, 163, 0.1);
+}
+.bg-sage\/15 {
+  background-color: rgba(216, 199, 163, 0.15);
+}
+.bg-sage\/20 {
+  background-color: rgba(216, 199, 163, 0.2);
+}
+.bg-sage\/30 {
+  background-color: rgba(216, 199, 163, 0.3);
+}
+.bg-blush\/30 {
+  background-color: rgba(232, 226, 216, 0.3);
+}
+.bg-blush\/20 {
+  background-color: rgba(232, 226, 216, 0.2);
+}
+.bg-sage\/8 {
+  background-color: rgba(216, 199, 163, 0.08);
+}
 
-.hover\:bg-sage:hover       { background-color: var(--sage); }
-.hover\:bg-sage-dark:hover  { background-color: var(--sage-dark); }
+.hover\:bg-sage:hover {
+  background-color: var(--sage);
+}
+.hover\:bg-sage-dark:hover {
+  background-color: var(--sage-dark);
+}
 
 /* ── Hero ──────────────────────────────────────────────────── */
 .hero-bg {
   background-color: var(--cream);
   background-image:
-    radial-gradient(ellipse at 80% 20%, rgba(74,124,89,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse at 20% 80%, rgba(232,196,196,0.25) 0%, transparent 60%);
+    radial-gradient(
+      ellipse at 80% 20%,
+      rgba(216, 199, 163, 0.12) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 20% 80%,
+      rgba(232, 226, 216, 0.35) 0%,
+      transparent 60%
+    );
 }
 
 .noise::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
@@ -108,10 +177,10 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Navbar ────────────────────────────────────────────────── */
 nav.scrolled {
-  background-color: rgba(250,250,248,0.95);
+  background-color: rgba(247, 244, 241, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 1px 20px rgba(15,15,15,0.06);
+  box-shadow: 0 1px 20px rgba(79, 79, 79, 0.06);
 }
 
 /* ── Linha decorativa ──────────────────────────────────────── */
@@ -149,19 +218,31 @@ nav.scrolled {
 .banner-overlay {
   background: linear-gradient(
     to top,
-    rgba(15,15,15,0.80) 0%,
-    rgba(15,15,15,0.30) 50%,
+    rgba(79, 79, 79, 0.75) 0%,
+    rgba(79, 79, 79, 0.25) 50%,
     transparent 100%
   );
 }
 
-/* Backgrounds dos banners */
-.bottle-bg-1 { background: linear-gradient(135deg, #d4e8da 0%, #b8d4c0 100%); }
-.bottle-bg-2 { background: linear-gradient(135deg, #e8d4d4 0%, #d4b8b8 100%); }
-.bottle-bg-3 { background: linear-gradient(135deg, #d4dce8 0%, #b8c4d4 100%); }
-.bottle-bg-4 { background: linear-gradient(135deg, #e8e4d4 0%, #d4ceb8 100%); }
-.bottle-bg-5 { background: linear-gradient(135deg, #dce8d4 0%, #c0d4b8 100%); }
-.bottle-bg-6 { background: linear-gradient(135deg, #e8d4e0 0%, #d4b8cc 100%); }
+/* Backgrounds dos banners — tons pastéis neutros YOU360 */
+.bottle-bg-1 {
+  background: linear-gradient(135deg, #ede8e0 0%, #ddd5c8 100%);
+}
+.bottle-bg-2 {
+  background: linear-gradient(135deg, #e8e2d8 0%, #d8d0c4 100%);
+}
+.bottle-bg-3 {
+  background: linear-gradient(135deg, #eae6dc 0%, #dad4c8 100%);
+}
+.bottle-bg-4 {
+  background: linear-gradient(135deg, #f0ebe2 0%, #e0d8cc 100%);
+}
+.bottle-bg-5 {
+  background: linear-gradient(135deg, #e8e4da 0%, #d8d0c4 100%);
+}
+.bottle-bg-6 {
+  background: linear-gradient(135deg, #ece6dc 0%, #dcd4c8 100%);
+}
 
 /* ── Product Cards ─────────────────────────────────────────── */
 .product-card {
@@ -182,19 +263,23 @@ nav.scrolled {
 
 /* ── Testimonial Cards ─────────────────────────────────────── */
 .testimonial-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .testimonial-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  box-shadow: 0 12px 40px rgba(79, 79, 79, 0.1);
 }
 
 /* ── Animações de entrada ──────────────────────────────────── */
 .reveal {
   opacity: 0;
   transform: translateY(28px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
 }
 
 .reveal.visible {
@@ -202,10 +287,18 @@ nav.scrolled {
   transform: translateY(0);
 }
 
-.reveal-delay-1 { transition-delay: 0.1s; }
-.reveal-delay-2 { transition-delay: 0.2s; }
-.reveal-delay-3 { transition-delay: 0.3s; }
-.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-1 {
+  transition-delay: 0.1s;
+}
+.reveal-delay-2 {
+  transition-delay: 0.2s;
+}
+.reveal-delay-3 {
+  transition-delay: 0.3s;
+}
+.reveal-delay-4 {
+  transition-delay: 0.4s;
+}
 
 /* ── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
@@ -217,7 +310,7 @@ nav.scrolled {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(74,124,89,0.3);
+  background: rgba(216, 199, 163, 0.4);
   border-radius: 3px;
 }
 
@@ -232,12 +325,12 @@ input[type="number"],
 input[type="password"],
 textarea,
 select {
-  font-family: 'Jost', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 input::placeholder,
 textarea::placeholder {
-  font-family: 'Jost', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 /* ── Utilitários extras ────────────────────────────────────── */
@@ -257,8 +350,12 @@ textarea::placeholder {
 
 /* ── Animação de spin (carregando) ─────────────────────────── */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin {
@@ -266,8 +363,13 @@ textarea::placeholder {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .animate-pulse {
@@ -281,9 +383,9 @@ textarea::placeholder {
   transition-duration: 300ms;
 }
 
-/* ── Admin — fundo escuro ──────────────────────────────────── */
+/* ── Admin — fundo refinado ────────────────────────────────── */
 .admin-bg {
-  background-color: var(--obsidian);
+  background-color: #3a3a3a;
   min-height: 100vh;
 }
 
@@ -291,7 +393,15 @@ textarea::placeholder {
 @media (max-width: 768px) {
   .hero-bg {
     background-image:
-      radial-gradient(ellipse at 50% 10%, rgba(74,124,89,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse at 50% 90%, rgba(232,196,196,0.25) 0%, transparent 60%);
+      radial-gradient(
+        ellipse at 50% 10%,
+        rgba(216, 199, 163, 0.12) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse at 50% 90%,
+        rgba(232, 226, 216, 0.35) 0%,
+        transparent 60%
+      );
   }
 }
