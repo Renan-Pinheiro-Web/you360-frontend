@@ -1,6 +1,6 @@
 /* ============================================================
    YOU360 — Global Styles
-   Tailwind base + design system completo
+   Paleta Rose Quartz — Quartzo Rosa + Lavanda + Off-black
 ============================================================ */
 
 @import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap");
@@ -11,13 +11,13 @@
 
 /* ── Variáveis CSS ─────────────────────────────────────────── */
 :root {
-  --cream: #f7f4f1; /* Off-White — fundo principal */
-  --sage: #d8c7a3; /* Dourado Pastel — destaque primário */
-  --sage-light: #e8dfc8; /* Dourado claro */
-  --sage-dark: #b8a07a; /* Dourado escuro — hover */
-  --blush: #e8e2d8; /* Bege Neutro */
-  --blush-dark: #b6b6b2; /* Cinza Médio */
-  --obsidian: #4f4f4f; /* Grafite Suave — texto */
+  --cream: #fdf5ff; /* Branco lavanda — fundo loja / texto claro */
+  --sage: #e8b4c8; /* Quartzo rosa — destaque primário */
+  --sage-light: #f2ccda; /* Quartzo rosa claro */
+  --sage-dark: #c88fa8; /* Quartzo rosa escuro — hover */
+  --blush: #c4a8d8; /* Lavanda — acento secundário */
+  --blush-dark: #a080b8; /* Lavanda escura */
+  --obsidian: #140e16; /* Off-black — fundo principal */
 }
 
 /* ── Reset & Base ──────────────────────────────────────────── */
@@ -120,27 +120,27 @@ h6 {
   border-color: var(--obsidian);
 }
 
-/* Opacidades utilitárias — RGB do Dourado Pastel #D8C7A3 = 216,199,163 */
+/* Opacidades utilitárias — RGB do Quartzo Rosa #E8B4C8 = 232,180,200 */
 .bg-sage\/10 {
-  background-color: rgba(216, 199, 163, 0.1);
+  background-color: rgba(232, 180, 200, 0.1);
 }
 .bg-sage\/15 {
-  background-color: rgba(216, 199, 163, 0.15);
+  background-color: rgba(232, 180, 200, 0.15);
 }
 .bg-sage\/20 {
-  background-color: rgba(216, 199, 163, 0.2);
+  background-color: rgba(232, 180, 200, 0.2);
 }
 .bg-sage\/30 {
-  background-color: rgba(216, 199, 163, 0.3);
+  background-color: rgba(232, 180, 200, 0.3);
 }
 .bg-blush\/30 {
-  background-color: rgba(232, 226, 216, 0.3);
+  background-color: rgba(196, 168, 216, 0.3);
 }
 .bg-blush\/20 {
-  background-color: rgba(232, 226, 216, 0.2);
+  background-color: rgba(196, 168, 216, 0.2);
 }
 .bg-sage\/8 {
-  background-color: rgba(216, 199, 163, 0.08);
+  background-color: rgba(232, 180, 200, 0.08);
 }
 
 .hover\:bg-sage:hover {
@@ -156,12 +156,12 @@ h6 {
   background-image:
     radial-gradient(
       ellipse at 80% 20%,
-      rgba(216, 199, 163, 0.12) 0%,
+      rgba(232, 180, 200, 0.15) 0%,
       transparent 60%
     ),
     radial-gradient(
       ellipse at 20% 80%,
-      rgba(232, 226, 216, 0.35) 0%,
+      rgba(196, 168, 216, 0.2) 0%,
       transparent 60%
     );
 }
@@ -177,10 +177,10 @@ h6 {
 
 /* ── Navbar ────────────────────────────────────────────────── */
 nav.scrolled {
-  background-color: rgba(247, 244, 241, 0.95);
+  background-color: rgba(253, 245, 255, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 1px 20px rgba(79, 79, 79, 0.06);
+  box-shadow: 0 1px 20px rgba(20, 14, 22, 0.08);
 }
 
 /* ── Linha decorativa ──────────────────────────────────────── */
@@ -218,30 +218,30 @@ nav.scrolled {
 .banner-overlay {
   background: linear-gradient(
     to top,
-    rgba(79, 79, 79, 0.75) 0%,
-    rgba(79, 79, 79, 0.25) 50%,
+    rgba(20, 14, 22, 0.8) 0%,
+    rgba(20, 14, 22, 0.3) 50%,
     transparent 100%
   );
 }
 
-/* Backgrounds dos banners — tons pastéis neutros YOU360 */
+/* Backgrounds dos banners — tons rose quartz e lavanda */
 .bottle-bg-1 {
-  background: linear-gradient(135deg, #ede8e0 0%, #ddd5c8 100%);
+  background: linear-gradient(135deg, #f2d4e0 0%, #e8bcd0 100%);
 }
 .bottle-bg-2 {
-  background: linear-gradient(135deg, #e8e2d8 0%, #d8d0c4 100%);
+  background: linear-gradient(135deg, #e0d0f0 0%, #d0b8e8 100%);
 }
 .bottle-bg-3 {
-  background: linear-gradient(135deg, #eae6dc 0%, #dad4c8 100%);
+  background: linear-gradient(135deg, #f5dce8 0%, #ecc8da 100%);
 }
 .bottle-bg-4 {
-  background: linear-gradient(135deg, #f0ebe2 0%, #e0d8cc 100%);
+  background: linear-gradient(135deg, #e8d8f4 0%, #d8c4ec 100%);
 }
 .bottle-bg-5 {
-  background: linear-gradient(135deg, #e8e4da 0%, #d8d0c4 100%);
+  background: linear-gradient(135deg, #f0cadc 0%, #e4b4cc 100%);
 }
 .bottle-bg-6 {
-  background: linear-gradient(135deg, #ece6dc 0%, #dcd4c8 100%);
+  background: linear-gradient(135deg, #ddd0f0 0%, #ccbce8 100%);
 }
 
 /* ── Product Cards ─────────────────────────────────────────── */
@@ -270,7 +270,7 @@ nav.scrolled {
 
 .testimonial-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 40px rgba(79, 79, 79, 0.1);
+  box-shadow: 0 12px 40px rgba(20, 14, 22, 0.15);
 }
 
 /* ── Animações de entrada ──────────────────────────────────── */
@@ -310,7 +310,7 @@ nav.scrolled {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(216, 199, 163, 0.4);
+  background: rgba(232, 180, 200, 0.4);
   border-radius: 3px;
 }
 
@@ -348,7 +348,7 @@ textarea::placeholder {
   overflow: hidden;
 }
 
-/* ── Animação de spin (carregando) ─────────────────────────── */
+/* ── Animação de spin ──────────────────────────────────────── */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -376,16 +376,16 @@ textarea::placeholder {
   animation: pulse 2s ease-in-out infinite;
 }
 
-/* ── Transições de página ──────────────────────────────────── */
+/* ── Transições ────────────────────────────────────────────── */
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
 }
 
-/* ── Admin — fundo refinado ────────────────────────────────── */
+/* ── Admin ─────────────────────────────────────────────────── */
 .admin-bg {
-  background-color: #3a3a3a;
+  background-color: var(--obsidian);
   min-height: 100vh;
 }
 
@@ -395,12 +395,12 @@ textarea::placeholder {
     background-image:
       radial-gradient(
         ellipse at 50% 10%,
-        rgba(216, 199, 163, 0.12) 0%,
+        rgba(232, 180, 200, 0.15) 0%,
         transparent 60%
       ),
       radial-gradient(
         ellipse at 50% 90%,
-        rgba(232, 226, 216, 0.35) 0%,
+        rgba(196, 168, 216, 0.2) 0%,
         transparent 60%
       );
   }

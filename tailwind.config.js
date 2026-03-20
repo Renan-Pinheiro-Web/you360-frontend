@@ -8,14 +8,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ── Paleta YOU360 ──────────────────────────────────────
-        cream:        '#F7F4F1',   // Off-White (fundo principal)
-        sage:         '#D8C7A3',   // Dourado Pastel (cor de destaque primária)
-        'sage-light': '#E8DFC8',   // Dourado claro
-        'sage-dark':  '#B8A07A',   // Dourado escuro (hover)
-        blush:        '#E8E2D8',   // Bege Neutro
-        'blush-dark': '#B6B6B2',   // Cinza Médio
-        obsidian:     '#4F4F4F',   // Grafite Suave (texto principal)
+        // ── Paleta YOU360 — Rose Quartz ────────────────────────
+        cream:        '#FDF5FF',   // Branco lavanda — fundo loja / texto claro
+        sage:         '#E8B4C8',   // Quartzo rosa — destaque primário
+        'sage-light': '#F2CCDA',   // Quartzo rosa claro — hover suave
+        'sage-dark':  '#C88FA8',   // Quartzo rosa escuro — hover botão
+        blush:        '#C4A8D8',   // Lavanda — acento secundário
+        'blush-dark': '#A080B8',   // Lavanda escura
+        obsidian:     '#140E16',   // Off-black — fundo principal admin/hero
       },
       fontFamily: {
         display: ['Montserrat', 'sans-serif'],
