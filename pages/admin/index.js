@@ -820,11 +820,13 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
 //  GALERIA DE IMAGENS
 // ══════════════════════════════════════════════════════════════
 function GaleriaModal({ produto, showToast, onClose }) {
-  const [galeria,  setGaleria]  = useState([])
-  const [loading,  setLoading]  = useState(true)
-  const [adding,   setAdding]   = useState(false)
-  const [urlInput, setUrlInput] = useState('')
-  const [deleteId, setDeleteId] = useState(null)
+  const [galeria,    setGaleria]    = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [adding,     setAdding]     = useState(false)
+  const [uploading,  setUploading]  = useState(false)
+  const [urlInput,   setUrlInput]   = useState('')
+  const [deleteId,   setDeleteId]   = useState(null)
+  const fileRef = useRef()
 
   const fetchGaleria = async () => {
     setLoading(true)
@@ -841,6 +843,24 @@ function GaleriaModal({ produto, showToast, onClose }) {
     try { await api.adminProducts.addGallery(produto.id, urlInput.trim()); showToast('Foto adicionada!'); setUrlInput(''); fetchGaleria() }
     catch (err) { showToast(err.message||'Erro ao adicionar','error') }
     finally { setAdding(false) }
+  }
+
+  // IMPLEMENTAÇÃO 1 — upload direto de arquivo para galeria
+  const handleUploadFile = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const tiposPermitidos = ['image/jpeg','image/png','image/webp','image/gif']
+    if (!tiposPermitidos.includes(file.type)) { showToast('Formato inválido. Use JPG, PNG ou WEBP.','error'); e.target.value=''; return }
+    if (file.size > 5 * 1024 * 1024) { showToast('Imagem muito grande. Máximo 5MB.','error'); e.target.value=''; return }
+    setUploading(true)
+    try {
+      const result = await api.upload.image(file)
+      const url = result.url || result
+      await api.adminProducts.addGallery(produto.id, url)
+      showToast('Foto enviada e adicionada à galeria!')
+      fetchGaleria()
+    } catch (err) { showToast(err.message||'Erro no upload','error') }
+    finally { setUploading(false); e.target.value='' }
   }
 
   const handleDelete = async (id) => {
@@ -864,12 +884,22 @@ function GaleriaModal({ produto, showToast, onClose }) {
           </button>
         </div>
         <div className="px-6 py-5">
-          <div className="border-l-2 border-sage/40 pl-4 py-1 mb-5">
-            <p className="font-body text-xs text-white/40 leading-relaxed">Cole a URL de uma imagem pública para adicionar à galeria do produto.</p>
+          {/* Upload direto */}
+          <div className="border border-white/8 p-4 mb-5" style={{background:'rgba(255,255,255,0.02)'}}>
+            <p className="font-body text-xs tracking-widest text-white/40 mb-3">FAZER UPLOAD DE FOTO</p>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleUploadFile} className="hidden"/>
+            <button onClick={() => fileRef.current.click()} disabled={uploading}
+              className="w-full font-body text-xs tracking-widest border border-dashed border-white/20 text-white/50 py-4 hover:border-sage hover:text-sage transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+              {uploading
+                ? <><div className="w-4 h-4 border-2 border-sage/30 border-t-sage rounded-full animate-spin"/>ENVIANDO IMAGEM...</>
+                : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>CLIQUE PARA FAZER UPLOAD (PNG, JPG ou WEBP · Máx 5MB)</>}
+            </button>
           </div>
+          {/* URL manual */}
+          <p className="font-body text-xs text-white/30 mb-2">OU cole uma URL de imagem pública:</p>
           <div className="flex gap-3 mb-6">
             <input value={urlInput} onChange={e=>setUrlInput(e.target.value)} placeholder="https://exemplo.com/imagem.jpg" className="admin-input flex-1"/>
-            <button onClick={handleAdd} disabled={adding} className="font-body text-xs tracking-widest bg-sage text-white px-5 py-2.5 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center gap-2 flex-shrink-0">
+            <button onClick={handleAdd} disabled={adding||uploading} className="font-body text-xs tracking-widest bg-sage text-white px-5 py-2.5 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center gap-2 flex-shrink-0">
               {adding ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>}
               ADD
             </button>
@@ -1121,6 +1151,7 @@ function VendasSection({ showToast }) {
   const [detailVenda, setDetailVenda] = useState(null)
   const [deleteId,    setDeleteId]    = useState(null)
   const [confirmDel,  setConfirmDel]  = useState(null)
+  const [showNovaVenda, setShowNovaVenda] = useState(false)
 
   const fetchVendas = async () => {
     setLoading(true)
@@ -1163,6 +1194,10 @@ function VendasSection({ showToast }) {
             {vendas.length} venda{vendas.length!==1?'s':''} · Total: <span className="text-sage">{fmtBRL(totalPeriodo)}</span>
           </p>
         </div>
+        <button onClick={() => setShowNovaVenda(true)} className="bg-sage text-white font-body text-xs tracking-widest px-5 py-2.5 hover:bg-sage-dark transition-all flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+          NOVA VENDA
+        </button>
       </header>
 
       {/* Filtros + limpar */}
@@ -1259,6 +1294,14 @@ function VendasSection({ showToast }) {
         )}
       </div>
 
+      {showNovaVenda && (
+        <NovaVendaModal
+          showToast={showToast}
+          onClose={() => setShowNovaVenda(false)}
+          onSaved={() => { setShowNovaVenda(false); fetchVendas() }}
+        />
+      )}
+
       {confirmDel && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 min-w-[320px] max-w-[440px]" style={{background:'#1a0f0f'}}>
           <div className="px-5 py-4">
@@ -1293,19 +1336,23 @@ function ClientesSection({ showToast }) {
   const [historico,   setHistorico]   = useState(null)
   const [histLoading, setHistLoading] = useState(false)
 
-  const fetchClientes = async () => {
+  const fetchClientes = async (q = '') => {
     setLoading(true)
-    try { const data = await api.clientes.list(search); setClientes(data||[]) } catch {}
+    try { const data = await api.clientes.list(q); setClientes(data||[]) } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { fetchClientes() }, [])
+  // Busca inicial
+  useEffect(() => { fetchClientes('') }, [])
 
-  const filtered = clientes.filter(c =>
-    c.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    c.whatsapp?.includes(search.replace(/\D/g,'')) ||
-    c.cidade?.toLowerCase().includes(search.toLowerCase())
-  )
+  // Debounce: dispara busca na API 300ms após parar de digitar
+  useEffect(() => {
+    const timer = setTimeout(() => { fetchClientes(search) }, 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Frontend usa a lista já filtrada pelo backend
+  const filtered = clientes
 
   const openHistorico = async (c) => {
     setHistorico({ cliente:c, vendas:[], stats:null })
@@ -1349,7 +1396,7 @@ function ClientesSection({ showToast }) {
       const payload = { nome:form.nome.trim(), cidade:form.cidade.trim(), estado:form.estado.trim().toUpperCase(), whatsapp:form.whatsapp }
       if (editingId) { await api.clientes.update(editingId, payload); showToast('Cliente atualizado!') }
       else { await api.clientes.create(payload); showToast('Cliente cadastrado!') }
-      setShowForm(false); fetchClientes()
+      setShowForm(false); fetchClientes(search)
     } catch (err) { showToast(err.message||'Erro','error') }
     finally { setSaving(false) }
   }
@@ -1361,7 +1408,7 @@ function ClientesSection({ showToast }) {
       await api.clientes.remove(confirmDel.id)
       showToast('Cliente excluído!')
       if (historico?.cliente?.id===confirmDel.id) setHistorico(null)
-      setConfirmDel(null); fetchClientes()
+      setConfirmDel(null); fetchClientes(search)
     } catch (err) { showToast(err.message||'Erro ao excluir','error') }
     finally { setDeleteId(null) }
   }
@@ -1559,6 +1606,315 @@ function ClientesSection({ showToast }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  NOVA VENDA MANUAL — modal completo
+//  Implementação 4+5: cria venda, vincula cliente, aparece no histórico
+// ══════════════════════════════════════════════════════════════
+function NovaVendaModal({ showToast, onClose, onSaved }) {
+  const [step,          setStep]          = useState('cliente') // 'cliente' | 'itens'
+  const [clientes,      setClientes]      = useState([])
+  const [loadingCli,    setLoadingCli]    = useState(true)
+  const [searchCli,     setSearchCli]     = useState('')
+  const [clienteSel,    setClienteSel]    = useState(null) // cliente existente selecionado
+  const [novoCliente,   setNovoCliente]   = useState(false)
+  const [formCli,       setFormCli]       = useState({ nome:'', cidade:'', estado:'', whatsapp:'' })
+  const [products,      setProducts]      = useState([])
+  const [loadingProd,   setLoadingProd]   = useState(false)
+  const [searchProd,    setSearchProd]    = useState('')
+  const [itens,         setItens]         = useState([]) // [{product, quantidade}]
+  const [saving,        setSaving]        = useState(false)
+
+  // Carrega clientes
+  useEffect(() => {
+    api.clientes.list('').then(d => { setClientes(d||[]); setLoadingCli(false) }).catch(() => setLoadingCli(false))
+  }, [])
+
+  // Carrega produtos
+  useEffect(() => {
+    setLoadingProd(true)
+    api.adminProducts.list().then(d => { setProducts((d||[]).filter(p => p.ativo)); setLoadingProd(false) }).catch(() => setLoadingProd(false))
+  }, [])
+
+  const clientesFiltrados = clientes.filter(c =>
+    c.nome?.toLowerCase().includes(searchCli.toLowerCase()) ||
+    c.whatsapp?.includes(searchCli.replace(/\D/g,''))
+  )
+
+  const produtosFiltrados = products.filter(p =>
+    p.nome?.toLowerCase().includes(searchProd.toLowerCase()) ||
+    p.linha?.toLowerCase().includes(searchProd.toLowerCase())
+  )
+
+  const addItem = (product) => {
+    setItens(prev => {
+      const exists = prev.find(i => i.product.id === product.id)
+      if (exists) return prev
+      return [...prev, { product, quantidade: 1 }]
+    })
+  }
+
+  const removeItem = (productId) => setItens(prev => prev.filter(i => i.product.id !== productId))
+
+  const changeQty = (productId, delta) => setItens(prev =>
+    prev.map(i => {
+      if (i.product.id !== productId) return i
+      const estoqueMax = i.product.estoque !== null ? Number(i.product.estoque) : 999
+      return { ...i, quantidade: Math.min(Math.max(1, i.quantidade + delta), estoqueMax) }
+    })
+  )
+
+  const total = itens.reduce((s, i) => s + Number(i.product.preco) * i.quantidade, 0)
+
+  const handleSave = async () => {
+    if (itens.length === 0) return showToast('Adicione pelo menos 1 produto','error')
+
+    // Valida cliente
+    let clienteId = null
+    if (novoCliente) {
+      if (!formCli.nome.trim()) return showToast('Nome do cliente é obrigatório','error')
+      if (!formCli.whatsapp.trim()) return showToast('WhatsApp do cliente é obrigatório','error')
+    } else if (clienteSel) {
+      clienteId = clienteSel.id
+    }
+    // Se novoCliente = false e clienteSel = null, venda sem cliente (permitido)
+
+    setSaving(true)
+    try {
+      // Se novo cliente, cria primeiro
+      if (novoCliente && formCli.nome.trim()) {
+        try {
+          const criado = await api.clientes.create({
+            nome:     formCli.nome.trim(),
+            cidade:   formCli.cidade.trim(),
+            estado:   formCli.estado.trim().toUpperCase(),
+            whatsapp: formCli.whatsapp,
+          })
+          clienteId = criado.id
+        } catch (err) {
+          // WhatsApp já existe — busca o cliente
+          if (err.status === 409) {
+            const wa = formCli.whatsapp.replace(/\D/g,'')
+            const existing = clientes.find(c => c.whatsapp?.replace(/\D/g,'') === wa)
+            if (existing) clienteId = existing.id
+            else throw err
+          } else throw err
+        }
+      }
+
+      await api.vendas.create({
+        cliente_id: clienteId || '',
+        status:     'confirmada',
+        origem:     'manual',
+        itens: itens.map(i => ({
+          product_id:   i.product.id,
+          nome_produto: i.product.nome,
+          preco_unit:   Number(i.product.preco),
+          quantidade:   i.quantidade,
+        })),
+      })
+
+      showToast('Venda registrada com sucesso!')
+      onSaved()
+    } catch (err) {
+      showToast(err.message || 'Erro ao registrar venda', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[55] flex items-start justify-center p-4 overflow-y-auto"
+      style={{background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)'}}
+      onClick={onClose}>
+      <div className="w-full max-w-2xl my-8 border border-white/10"
+        style={{background:'#141414'}} onClick={e=>e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
+          <div>
+            <h2 className="font-display text-2xl font-light text-white">Nova Venda Manual</h2>
+            <div className="flex items-center gap-3 mt-1">
+              <span className={`font-body text-xs px-2 py-0.5 transition-all ${step==='cliente' ? 'text-sage bg-sage/10' : 'text-white/30'}`}>1. Cliente</span>
+              <span className="text-white/20 text-xs">→</span>
+              <span className={`font-body text-xs px-2 py-0.5 transition-all ${step==='itens' ? 'text-sage bg-sage/10' : 'text-white/30'}`}>2. Produtos</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5">
+
+          {/* ── STEP 1: CLIENTE ── */}
+          {step === 'cliente' && (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <button onClick={() => { setNovoCliente(false); setClienteSel(null) }}
+                  className={`flex-1 font-body text-xs tracking-widest py-2.5 border transition-all ${!novoCliente ? 'border-sage text-sage bg-sage/10' : 'border-white/10 text-white/30 hover:border-white/30'}`}>
+                  CLIENTE EXISTENTE
+                </button>
+                <button onClick={() => { setNovoCliente(true); setClienteSel(null) }}
+                  className={`flex-1 font-body text-xs tracking-widest py-2.5 border transition-all ${novoCliente ? 'border-sage text-sage bg-sage/10' : 'border-white/10 text-white/30 hover:border-white/30'}`}>
+                  CRIAR NOVO CLIENTE
+                </button>
+              </div>
+
+              {!novoCliente && (
+                <>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input value={searchCli} onChange={e=>setSearchCli(e.target.value)} placeholder="Buscar cliente por nome ou WhatsApp..."
+                      className="w-full pl-9 pr-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
+                      style={{background:'rgba(255,255,255,0.04)'}}/>
+                  </div>
+                  <div className="border border-white/8 overflow-hidden max-h-60 overflow-y-auto" style={{background:'rgba(255,255,255,0.02)'}}>
+                    {/* Opção sem cliente */}
+                    <div onClick={() => setClienteSel(null)}
+                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-white/5 transition-all ${!clienteSel ? 'bg-sage/10' : 'hover:bg-white/5'}`}>
+                      <div className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white/30 text-xs">—</span>
+                      </div>
+                      <span className="font-body text-sm text-white/40 italic">Sem cliente vinculado</span>
+                      {!clienteSel && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="2" className="ml-auto"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                    {loadingCli ? (
+                      <div className="flex items-center justify-center py-8"><div className="w-5 h-5 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+                    ) : clientesFiltrados.length === 0 ? (
+                      <p className="font-body text-xs text-white/30 text-center py-6">Nenhum cliente encontrado.</p>
+                    ) : clientesFiltrados.map(c => (
+                      <div key={c.id} onClick={() => setClienteSel(c)}
+                        className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-white/5 transition-all ${clienteSel?.id===c.id ? 'bg-sage/10' : 'hover:bg-white/5'}`}>
+                        <div className="w-7 h-7 rounded-full bg-sage/20 flex items-center justify-center flex-shrink-0">
+                          <span className="font-display text-sage text-sm">{c.nome?.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-body text-sm text-white truncate">{c.nome}</p>
+                          {c.whatsapp && <p className="font-body text-xs text-white/30">{c.whatsapp}</p>}
+                        </div>
+                        {clienteSel?.id===c.id && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {novoCliente && (
+                <div className="space-y-3">
+                  <FormField label="NOME *"><input value={formCli.nome} onChange={e=>setFormCli({...formCli,nome:e.target.value})} placeholder="Nome completo" className="admin-input"/></FormField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="CIDADE"><input value={formCli.cidade} onChange={e=>setFormCli({...formCli,cidade:e.target.value})} placeholder="Ex: Quixadá" className="admin-input"/></FormField>
+                    <FormField label="ESTADO"><input value={formCli.estado} onChange={e=>setFormCli({...formCli,estado:e.target.value.toUpperCase().slice(0,2)})} placeholder="CE" maxLength={2} className="admin-input uppercase"/></FormField>
+                  </div>
+                  <FormField label="WHATSAPP *"><input value={formCli.whatsapp} onChange={e=>setFormCli({...formCli,whatsapp:maskPhone(e.target.value)})} placeholder="(88) 99999-9999" className="admin-input"/></FormField>
+                </div>
+              )}
+
+              <button onClick={() => setStep('itens')}
+                className="w-full bg-sage text-white font-body text-xs tracking-widest py-3.5 hover:bg-sage-dark transition-all flex items-center justify-center gap-2">
+                PRÓXIMO — SELECIONAR PRODUTOS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          )}
+
+          {/* ── STEP 2: PRODUTOS ── */}
+          {step === 'itens' && (
+            <div className="space-y-4">
+              {/* Resumo do cliente */}
+              <div className="flex items-center gap-2 px-3 py-2 border border-white/8" style={{background:'rgba(255,255,255,0.03)'}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a7c59" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <span className="font-body text-xs text-white/60">
+                  {novoCliente && formCli.nome ? formCli.nome : clienteSel ? clienteSel.nome : 'Sem cliente vinculado'}
+                </span>
+                <button onClick={() => setStep('cliente')} className="ml-auto font-body text-xs text-white/30 hover:text-sage transition-colors">alterar</button>
+              </div>
+
+              {/* Busca de produto */}
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input value={searchProd} onChange={e=>setSearchProd(e.target.value)} placeholder="Buscar produto..."
+                  className="w-full pl-9 pr-4 py-2.5 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
+                  style={{background:'rgba(255,255,255,0.04)'}}/>
+              </div>
+
+              {/* Lista de produtos para adicionar */}
+              <div className="border border-white/8 overflow-hidden max-h-52 overflow-y-auto" style={{background:'rgba(255,255,255,0.02)'}}>
+                {loadingProd ? (
+                  <div className="flex items-center justify-center py-8"><div className="w-5 h-5 border-2 border-sage border-t-transparent rounded-full animate-spin"/></div>
+                ) : produtosFiltrados.length === 0 ? (
+                  <p className="font-body text-xs text-white/30 text-center py-6">Nenhum produto ativo encontrado.</p>
+                ) : produtosFiltrados.map(p => {
+                  const jaAdicionado = itens.some(i => i.product.id === p.id)
+                  const estoqueNum = p.estoque !== null ? Number(p.estoque) : null
+                  const semEstoque = estoqueNum !== null && estoqueNum <= 0
+                  return (
+                    <div key={p.id} className={`flex items-center gap-3 px-4 py-3 border-b border-white/5 transition-all ${semEstoque ? 'opacity-40' : jaAdicionado ? 'bg-sage/5' : 'hover:bg-white/5'}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-body text-sm text-white truncate">{p.nome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-body text-xs text-white/30">{fmtBRL(p.preco)}</p>
+                          {estoqueNum !== null && <span className={`font-body text-xs ${semEstoque?'text-red-400':estoqueNum<=5?'text-orange-400':'text-sage/60'}`}>{semEstoque?'Esgotado':`${estoqueNum} un.`}</span>}
+                        </div>
+                      </div>
+                      <button onClick={() => !semEstoque && !jaAdicionado && addItem(p)} disabled={semEstoque || jaAdicionado}
+                        className={`font-body text-xs px-3 py-1.5 border transition-all ${jaAdicionado ? 'border-sage/30 text-sage/50 cursor-default' : semEstoque ? 'border-white/10 text-white/20 cursor-not-allowed' : 'border-white/20 text-white/50 hover:border-sage hover:text-sage'}`}>
+                        {jaAdicionado ? 'Adicionado' : 'Adicionar'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Itens selecionados */}
+              {itens.length > 0 && (
+                <div className="border border-white/8 overflow-hidden" style={{background:'rgba(255,255,255,0.02)'}}>
+                  <p className="font-body text-xs tracking-widest text-white/30 px-4 py-2 border-b border-white/5">ITENS DA VENDA</p>
+                  {itens.map(i => (
+                    <div key={i.product.id} className="flex items-center gap-3 px-4 py-3 border-b border-white/5 last:border-b-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-body text-sm text-white truncate">{i.product.nome}</p>
+                        <p className="font-body text-xs text-white/30">{fmtBRL(i.product.preco)} × {i.quantidade} = {fmtBRL(Number(i.product.preco) * i.quantidade)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => changeQty(i.product.id, -1)} className="w-6 h-6 border border-white/20 text-white/50 flex items-center justify-center hover:border-sage hover:text-sage transition-all text-sm">−</button>
+                        <span className="font-body text-sm text-white w-5 text-center">{i.quantidade}</span>
+                        <button onClick={() => changeQty(i.product.id, 1)}
+                          disabled={i.product.estoque !== null && i.quantidade >= Number(i.product.estoque)}
+                          className="w-6 h-6 border border-white/20 text-white/50 flex items-center justify-center hover:border-sage hover:text-sage transition-all text-sm disabled:opacity-30">+</button>
+                        <button onClick={() => removeItem(i.product.id)} className="w-6 h-6 text-white/20 hover:text-red-400 transition-colors ml-1">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center px-4 py-3 border-t border-white/8" style={{background:'rgba(255,255,255,0.03)'}}>
+                    <span className="font-body text-xs text-white/40 tracking-widest">TOTAL</span>
+                    <span className="font-display text-xl font-light text-white">{fmtBRL(total)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => setStep('cliente')} className="font-body text-xs tracking-widest border border-white/15 text-white/50 py-3 px-5 hover:border-white/30 transition-all flex items-center gap-2">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                  VOLTAR
+                </button>
+                <button onClick={handleSave} disabled={saving || itens.length === 0}
+                  className="flex-1 bg-sage text-white font-body text-xs tracking-widest py-3 hover:bg-sage-dark transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>}
+                  {saving ? 'REGISTRANDO...' : `REGISTRAR VENDA · ${fmtBRL(total)}`}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
