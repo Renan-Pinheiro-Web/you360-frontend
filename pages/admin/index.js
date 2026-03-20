@@ -390,7 +390,7 @@ function LinhasSection({ showToast }) {
               <FormField label="NOME DA LINHA">
                 <input value={form.nome_linha} onChange={e => updateForm(idx,'nome_linha',e.target.value)} placeholder="Ex: LINHA SKINCARE" className="admin-input"/>
               </FormField>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                 <FormField label="TÍTULO"><input value={form.titulo} onChange={e => updateForm(idx,'titulo',e.target.value)} placeholder="Ex: Skin" className="admin-input"/></FormField>
                 <FormField label="SUBTÍTULO"><input value={form.subtitulo} onChange={e => updateForm(idx,'subtitulo',e.target.value)} placeholder="Ex: Glow" className="admin-input"/></FormField>
               </div>
@@ -626,7 +626,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
                 </div>
 
                 {/* ── Mobile: barra de ações na base ── */}
-                <div className="md:hidden flex items-center gap-1 px-3 pb-3 border-t border-white/5 pt-2">
+                <div className="md:hidden flex items-center gap-1 px-3 pb-3 border-t border-white/5 pt-2 overflow-x-auto">
                   <button onClick={() => openEdit(p)} className="flex items-center gap-1.5 px-2.5 py-1.5 border border-white/10 text-white/40 hover:text-sage hover:border-sage transition-all font-body text-xs">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
@@ -679,7 +679,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
       {/* Modal produto */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style={{background:'rgba(0,0,0,0.75)',backdropFilter:'blur(4px)'}}>
-          <div className="relative w-full max-w-xl my-8 border border-white/10" style={{background:'#1a1a1a'}}>
+          <div className="relative w-full max-w-xl my-4 sm:my-8 border border-white/10" style={{background:'#1a1a1a'}}>
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
               <h2 className="font-display text-2xl font-light text-white">{editingId?'Editar Produto':'Novo Produto'}</h2>
               <button onClick={closeForm} className="text-white/30 hover:text-white transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
@@ -688,7 +688,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
               <FormField label="NOME DO PRODUTO *">
                 <input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} required placeholder="Ex: YOU Glow Sérum" className="admin-input"/>
               </FormField>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 <FormField label="LINHA">
                   {(() => {
                     const linhasExistentes = [...new Set([...LINHAS_DB, ...products.map(p=>p.linha).filter(Boolean)])].sort()
@@ -718,7 +718,7 @@ function ProdutosSection({ showToast, setDeleteConfirm }) {
               <FormField label="DESCRIÇÃO">
                 <textarea value={form.descricao} onChange={e=>setForm({...form,descricao:e.target.value})} rows={3} placeholder="Descreva o produto..." className="admin-input resize-none"/>
               </FormField>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 <FormField label="PREÇO (R$) *">
                   <input type="number" step="0.01" min="0" value={form.preco} onChange={e=>setForm({...form,preco:e.target.value})} required placeholder="189.90" className="admin-input"/>
                 </FormField>
@@ -873,7 +873,7 @@ function GaleriaModal({ produto, showToast, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
       style={{ background:'rgba(0,0,0,0.8)', backdropFilter:'blur(4px)' }} onClick={onClose}>
-      <div className="w-full max-w-2xl my-8 border border-white/10" style={{ background:'#1a1a1a' }} onClick={e=>e.stopPropagation()}>
+      <div className="w-full max-w-2xl my-4 sm:my-8 border border-white/10" style={{ background:'#1a1a1a' }} onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
           <div>
             <h2 className="font-display text-xl font-light text-white">Galeria de Imagens</h2>
@@ -1053,20 +1053,20 @@ function DepoimentosSection({ showToast }) {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto" style={{background:'rgba(0,0,0,0.75)',backdropFilter:'blur(4px)'}}>
-          <div className="relative w-full max-w-lg my-8 border border-white/10" style={{background:'#1a1a1a'}}>
+          <div className="relative w-full max-w-lg my-4 sm:my-8 border border-white/10" style={{background:'#1a1a1a'}}>
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
               <h2 className="font-display text-xl font-light text-white">{editingId?'Editar Depoimento':'Novo Depoimento'}</h2>
               <button onClick={closeForm} className="text-white/30 hover:text-white transition-colors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
             </div>
             <form onSubmit={handleSave} className="px-6 py-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 <FormField label="NOME *"><input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} required placeholder="Ex: Fernanda Lima" className="admin-input"/></FormField>
                 <FormField label="CIDADE"><input value={form.cidade} onChange={e=>setForm({...form,cidade:e.target.value})} placeholder="Ex: Fortaleza, CE" className="admin-input"/></FormField>
               </div>
               <FormField label="DEPOIMENTO *">
                 <textarea value={form.texto} onChange={e=>setForm({...form,texto:e.target.value})} required rows={4} placeholder="O que o cliente disse..." className="admin-input resize-none"/>
               </FormField>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 <FormField label="INICIAL DO AVATAR">
                   <input value={form.inicial} onChange={e=>setForm({...form,inicial:e.target.value.toUpperCase().slice(0,1)})} placeholder="Ex: F" maxLength={1} className="admin-input"/>
                 </FormField>
@@ -1115,7 +1115,7 @@ function DepoimentosSection({ showToast }) {
       )}
 
       {confirmDel && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30" style={{background:'#1a0f0f',minWidth:'320px',maxWidth:'440px'}}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30" style={{background:'#1a0f0f',width:'calc(100vw - 3rem)',maxWidth:'440px'}}>
           <div className="px-5 py-4">
             <p className="font-body text-sm text-white font-medium mb-1">Excluir depoimento?</p>
             <p className="font-body text-xs text-white/50 mb-4">De <span className="text-white/70">{confirmDel.nome}</span> — esta ação não pode ser desfeita.</p>
@@ -1209,10 +1209,10 @@ function VendasSection({ showToast }) {
           </button>
         ))}
         {periodo==='custom' && (
-          <div className="flex items-center gap-2 ml-2">
-            <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage" style={{background:'rgba(255,255,255,0.05)'}}/>
+          <div className="flex flex-wrap items-center gap-2 ml-0 sm:ml-2 w-full sm:w-auto mt-1 sm:mt-0">
+            <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage flex-1 sm:flex-none" style={{background:'rgba(255,255,255,0.05)'}}/>
             <span className="text-white/30 text-xs">até</span>
-            <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage" style={{background:'rgba(255,255,255,0.05)'}}/>
+            <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="font-body text-xs text-white/60 px-3 py-1.5 border border-white/10 focus:outline-none focus:border-sage flex-1 sm:flex-none" style={{background:'rgba(255,255,255,0.05)'}}/>
           </div>
         )}
         {(periodo !== 'mes' || dataInicio || dataFim) && (
@@ -1303,7 +1303,7 @@ function VendasSection({ showToast }) {
       )}
 
       {confirmDel && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 min-w-[320px] max-w-[440px]" style={{background:'#1a0f0f'}}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 w-[calc(100vw-3rem)] max-w-[440px]" style={{background:'#1a0f0f'}}>
           <div className="px-5 py-4">
             <p className="font-body text-sm text-white font-medium mb-1">Excluir venda #{confirmDel.numero}?</p>
             <p className="font-body text-xs text-white/50 mb-4">Esta ação não pode ser desfeita.</p>
@@ -1515,7 +1515,7 @@ function ClientesSection({ showToast }) {
             ) : (
               <>
                 {historico.stats && (
-                  <div className="grid grid-cols-4 gap-0 border-b border-white/8">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 border-b border-white/8">
                     {[
                       { label:'COMPRAS',     val: historico.stats.totalConfirm },
                       { label:'TOTAL GASTO', val: fmtBRL(historico.stats.totalGasto) },
@@ -1577,7 +1577,7 @@ function ClientesSection({ showToast }) {
             </div>
             <div className="px-6 py-6 space-y-4">
               <FormField label="NOME *"><input value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} placeholder="Nome completo" className="admin-input"/></FormField>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 <FormField label="CIDADE"><input value={form.cidade} onChange={e=>setForm({...form,cidade:e.target.value})} placeholder="Ex: Quixadá" className="admin-input"/></FormField>
                 <FormField label="ESTADO"><input value={form.estado} onChange={e=>setForm({...form,estado:e.target.value.toUpperCase().slice(0,2)})} placeholder="CE" maxLength={2} className="admin-input uppercase"/></FormField>
               </div>
@@ -1595,7 +1595,7 @@ function ClientesSection({ showToast }) {
       )}
 
       {confirmDel && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 min-w-[320px] max-w-[440px]" style={{background:'#1a0f0f'}}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30 w-[calc(100vw-3rem)] max-w-[440px]" style={{background:'#1a0f0f'}}>
           <div className="px-5 py-4">
             <p className="font-body text-sm text-white font-medium mb-1">Excluir cliente?</p>
             <p className="font-body text-xs text-white/50 mb-4"><span className="text-white/70">{confirmDel.nome}</span> — as vendas permanecerão no histórico.</p>
@@ -1731,13 +1731,13 @@ function NovaVendaModal({ showToast, onClose, onSaved }) {
     <div className="fixed inset-0 z-[55] flex items-start justify-center p-4 overflow-y-auto"
       style={{background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)'}}
       onClick={onClose}>
-      <div className="w-full max-w-2xl my-8 border border-white/10"
+      <div className="w-full max-w-2xl my-4 sm:my-8 border border-white/10"
         style={{background:'#141414'}} onClick={e=>e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
           <div>
-            <h2 className="font-display text-2xl font-light text-white">Nova Venda Manual</h2>
+            <h2 className="font-display text-lg sm:text-2xl font-light text-white">Nova Venda Manual</h2>
             <div className="flex items-center gap-3 mt-1">
               <span className={`font-body text-xs px-2 py-0.5 transition-all ${step==='cliente' ? 'text-sage bg-sage/10' : 'text-white/30'}`}>1. Cliente</span>
               <span className="text-white/20 text-xs">→</span>
@@ -1807,7 +1807,7 @@ function NovaVendaModal({ showToast, onClose, onSaved }) {
               {novoCliente && (
                 <div className="space-y-3">
                   <FormField label="NOME *"><input value={formCli.nome} onChange={e=>setFormCli({...formCli,nome:e.target.value})} placeholder="Nome completo" className="admin-input"/></FormField>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                     <FormField label="CIDADE"><input value={formCli.cidade} onChange={e=>setFormCli({...formCli,cidade:e.target.value})} placeholder="Ex: Quixadá" className="admin-input"/></FormField>
                     <FormField label="ESTADO"><input value={formCli.estado} onChange={e=>setFormCli({...formCli,estado:e.target.value.toUpperCase().slice(0,2)})} placeholder="CE" maxLength={2} className="admin-input uppercase"/></FormField>
                   </div>
@@ -1925,7 +1925,7 @@ function NovaVendaModal({ showToast, onClose, onSaved }) {
 // ══════════════════════════════════════════════════════════════
 function DeleteConfirmToast({ produto, onConfirm, onCancel }) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30" style={{background:'#1a0f0f',minWidth:'320px',maxWidth:'440px'}}>
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] shadow-2xl border border-red-500/30" style={{background:'#1a0f0f',width:'calc(100vw - 3rem)',maxWidth:'440px'}}>
       <div className="px-5 py-4">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-red-900/50 flex items-center justify-center flex-shrink-0 mt-0.5">

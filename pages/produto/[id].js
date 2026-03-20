@@ -192,7 +192,7 @@ export default function ProdutoPage({ product, galeria, suggestions }) {
       </div>
 
       {/* Breadcrumb */}
-      <div className="pt-28 pb-4 px-6 md:px-12 max-w-7xl mx-auto">
+      <div className="pt-20 sm:pt-28 pb-4 px-6 md:px-12 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 font-body text-xs tracking-widest text-obsidian/40">
           <Link href="/" className="hover:text-sage transition-colors">INÍCIO</Link>
           <span>/</span>
@@ -204,7 +204,7 @@ export default function ProdutoPage({ product, galeria, suggestions }) {
 
       {/* ── PRODUTO PRINCIPAL ──────────────────────────────────── */}
       <section className="pb-24 px-6 md:px-12 max-w-7xl mx-auto">
-        <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-start">
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-20 items-start">
 
           {/* ── GALERIA ── */}
           <div className="space-y-3">
@@ -262,7 +262,7 @@ export default function ProdutoPage({ product, galeria, suggestions }) {
             {product.linha && (
               <p className={`font-body text-xs tracking-[0.4em] ${linhaColor} uppercase mb-3`}>{product.linha}</p>
             )}
-            <h1 className="font-display text-5xl md:text-6xl font-light text-obsidian leading-tight mb-2">{product.nome}</h1>
+            <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-light text-obsidian leading-tight mb-2">{product.nome}</h1>
             {product.fragrancia && (
               <p className="font-body text-sm text-obsidian/50 tracking-wide mb-6">{product.fragrancia}</p>
             )}
@@ -273,7 +273,7 @@ export default function ProdutoPage({ product, galeria, suggestions }) {
 
             {/* Preço */}
             <div className="flex items-end gap-3 mb-3">
-              <p className={`font-display text-5xl font-light ${esgotado ? 'text-obsidian/30' : 'text-obsidian'}`}>
+              <p className={`font-display text-3xl sm:text-5xl font-light ${esgotado ? 'text-obsidian/30' : 'text-obsidian'}`}>
                 {formattedPrice}
               </p>
             </div>
@@ -309,11 +309,11 @@ export default function ProdutoPage({ product, galeria, suggestions }) {
               ← VER TODOS OS PRODUTOS
             </Link>
 
-            <div className="grid grid-cols-3 gap-4 mt-10 pt-8 border-t border-obsidian/8">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-10 pt-8 border-t border-obsidian/8">
               {[{icon:'🌿',label:'Cruelty-free'},{icon:'✦',label:'Alta qualidade'},{icon:'📦',label:'Entrega segura'}].map((d,i) => (
                 <div key={i} className="text-center">
-                  <p className="text-2xl mb-1">{d.icon}</p>
-                  <p className="font-body text-xs text-obsidian/40 tracking-wider">{d.label}</p>
+                  <p className="text-xl sm:text-2xl mb-1">{d.icon}</p>
+                  <p className="font-body text-xs text-obsidian/40 tracking-wider leading-tight">{d.label}</p>
                 </div>
               ))}
             </div>
@@ -395,7 +395,7 @@ export default function ProdutoPage({ product, galeria, suggestions }) {
                   className="w-full px-4 py-3 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
                   style={{ background:'rgba(255,255,255,0.05)' }}/>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                 <div>
                   <label className="font-body text-xs tracking-widest text-white/40 block mb-2">CIDADE</label>
                   <input value={clienteData.cidade} onChange={e => setClienteData({...clienteData, cidade: e.target.value})}

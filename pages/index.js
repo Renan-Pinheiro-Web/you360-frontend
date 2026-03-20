@@ -325,7 +325,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
             <p className="font-body text-xs tracking-[0.4em] text-sage uppercase mb-6 reveal">
               <span className="deco-line"/>Cosméticos & Estética Premium
             </p>
-            <h1 className="font-display text-6xl md:text-7xl lg:text-8xl font-light leading-[1.05] text-obsidian reveal reveal-delay-1">
+            <h1 className="font-display text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-light leading-[1.05] text-obsidian reveal reveal-delay-1">
               Sua Pele,<br/><em className="text-sage">Sua Melhor</em><br/>Versão.
             </h1>
             <p className="font-body font-light text-obsidian/60 mt-6 text-base leading-relaxed max-w-md reveal reveal-delay-2">
@@ -338,7 +338,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
               </a>
               <a href="#sobre" className="font-body text-xs tracking-widest text-obsidian/60 hover:text-sage transition-colors border-b border-obsidian/20 hover:border-sage pb-0.5">SOBRE A MARCA</a>
             </div>
-            <div className="flex gap-10 mt-14 reveal reveal-delay-4">
+            <div className="flex flex-wrap gap-6 sm:gap-10 mt-14 reveal reveal-delay-4">
               <div>
                 <p className="font-display text-4xl font-light text-obsidian">10K+</p>
                 <p className="font-body text-xs tracking-widest text-obsidian/50 mt-1">CLIENTES FELIZES</p>
@@ -356,9 +356,9 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
             </div>
           </div>
           <div className="relative flex justify-center items-center reveal reveal-delay-2">
-            <div className="absolute w-[320px] h-[320px] md:w-[420px] md:h-[420px] rounded-full border border-sage/20 animate-spin" style={{ animationDuration: '20s' }}/>
-            <div className="absolute w-[260px] h-[260px] md:w-[340px] md:h-[340px] rounded-full border border-blush/30 animate-spin" style={{ animationDuration: '14s', animationDirection: 'reverse' }}/>
-            <div className="relative z-10 w-[240px] h-[240px] md:w-[320px] md:h-[320px] rounded-full overflow-hidden"
+            <div className="absolute w-[220px] h-[220px] sm:w-[320px] sm:h-[320px] md:w-[420px] md:h-[420px] rounded-full border border-sage/20 animate-spin" style={{ animationDuration: '20s' }}/>
+            <div className="absolute w-[180px] h-[180px] sm:w-[260px] sm:h-[260px] md:w-[340px] md:h-[340px] rounded-full border border-blush/30 animate-spin" style={{ animationDuration: '14s', animationDirection: 'reverse' }}/>
+            <div className="relative z-10 w-[160px] h-[160px] sm:w-[240px] sm:h-[240px] md:w-[320px] md:h-[320px] rounded-full overflow-hidden"
               style={{ background: 'linear-gradient(135deg, #d4e8da 0%, #f0d8d8 100%)' }}>
               {heroConfig?.imagem_url
                 // eslint-disable-next-line @next/next/no-img-element
@@ -401,7 +401,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
           ]).map((b, i) => {
             const bgs    = ['bottle-bg-1','bottle-bg-3','bottle-bg-5']
             const delays = ['reveal-delay-1','reveal-delay-2','reveal-delay-3']
-            const heightClass = i === 1 ? 'h-[480px] md:h-[560px] md:-mt-10' : 'h-[480px]'
+            const heightClass = i === 1 ? 'h-[380px] sm:h-[480px] md:h-[560px] md:-mt-10' : 'h-[380px] sm:h-[480px]'
             return (
               <a key={b.id} href="#produtos" className={`banner-card block rounded-none relative ${heightClass} group ${delays[i]} reveal`}>
                 <div className={`banner-img absolute inset-0 ${bgs[i]} flex items-center justify-center`}>
@@ -486,8 +486,8 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div className="relative reveal">
             <div className="w-full aspect-[4/5] bg-gradient-to-br from-sage/15 to-blush/30 flex items-center justify-center gap-6">
-              <span className="font-display text-8xl text-sage/20 font-light select-none">Y</span>
-              <span className="font-display text-8xl text-blush/40 font-light select-none">360</span>
+              <span className="font-display text-6xl sm:text-8xl text-sage/20 font-light select-none">Y</span>
+              <span className="font-display text-6xl sm:text-8xl text-blush/40 font-light select-none">360</span>
             </div>
             <div className="absolute -bottom-6 -right-6 bg-obsidian text-white p-6 w-36 h-36 flex flex-col items-center justify-center text-center">
               <p className="font-display text-3xl font-light leading-none">5</p>
@@ -499,7 +499,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
             <h2 className="font-display text-4xl md:text-5xl font-light text-obsidian leading-tight mb-6">A ciência a serviço<br/>da sua <em>beleza</em></h2>
             <p className="font-body font-light text-obsidian/60 leading-relaxed mb-4">Fundada com a missão de democratizar o acesso a cosméticos de alta performance, a YOU360 desenvolve produtos que combinam ciência avançada com ingredientes naturais selecionados.</p>
             <p className="font-body font-light text-obsidian/60 leading-relaxed mb-8">Nossa equipe de especialistas trabalha continuamente para trazer as mais recentes inovações em skincare e estética, garantindo segurança, eficácia e resultados reais para todos os tipos de pele.</p>
-            <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               <div className="border-l-2 border-sage pl-4"><p className="font-display text-3xl font-light text-obsidian">{products.length}+</p><p className="font-body text-xs tracking-widest text-obsidian/50 mt-1">PRODUTOS ATIVOS</p></div>
               <div className="border-l-2 border-blush-dark pl-4"><p className="font-display text-3xl font-light text-obsidian">10K+</p><p className="font-body text-xs tracking-widest text-obsidian/50 mt-1">CLIENTES EM TODO O BRASIL</p></div>
             </div>
@@ -593,7 +593,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
                   className="w-full px-4 py-3 font-body text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-sage border border-white/10 transition-colors"
                   style={{ background:'rgba(255,255,255,0.05)' }}/>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                 <div>
                   <label className="font-body text-xs tracking-widest text-white/40 block mb-2">CIDADE</label>
                   <input value={clienteData.cidade} onChange={e => setClienteData({...clienteData, cidade: e.target.value})}

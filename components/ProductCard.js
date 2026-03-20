@@ -86,7 +86,7 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
         )}
 
         <Link href={`/produto/${product.id}`}>
-          <h3 className="font-display text-xl font-light text-obsidian group-hover:text-sage transition-colors cursor-pointer leading-tight mb-1">
+          <h3 className="font-display text-lg sm:text-xl font-light text-obsidian group-hover:text-sage transition-colors cursor-pointer leading-tight mb-1">
             {product.nome}
           </h3>
         </Link>
@@ -97,7 +97,7 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
           </p>
         )}
 
-        {/* BUG 1 CORRIGIDO — Indicador de unidades na área de texto do card */}
+        {/* Indicador de unidades na área de texto do card */}
         {estoque !== null && (
           <p className={`font-body text-xs mb-1 flex items-center gap-1.5 ${
             esgotado ? 'text-red-400' : poucas ? 'text-orange-400' : 'text-sage/70'
@@ -114,26 +114,27 @@ export default function ProductCard({ product, delay = 0, onBuy }) {
           </p>
         )}
 
-        <div className="flex items-center justify-between mt-3">
-          <p className="font-display text-2xl font-light text-obsidian">
+        <div className="flex items-center justify-between mt-3 gap-2">
+          <p className="font-display text-xl sm:text-2xl font-light text-obsidian flex-shrink-0">
             R$ {Number(product.preco).toFixed(2).replace('.', ',')}
           </p>
 
           <button
             onClick={() => !esgotado && onBuy && onBuy(product)}
             disabled={esgotado}
-            className={`font-body text-xs tracking-widest px-4 py-2.5 border transition-all duration-300 flex items-center gap-2
+            className={`font-body text-xs tracking-widest px-2.5 sm:px-4 py-2.5 border transition-all duration-300 flex items-center gap-1.5 flex-shrink-0
               ${esgotado
                 ? 'border-obsidian/10 text-obsidian/20 cursor-not-allowed'
                 : 'border-sage text-sage hover:bg-sage hover:text-white'
               }`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="flex-shrink-0">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
               <line x1="3" y1="6" x2="21" y2="6"/>
               <path d="M16 10a4 4 0 01-8 0"/>
             </svg>
-            {esgotado ? 'ESGOTADO' : 'COMPRAR'}
+            <span className="hidden xs:inline">{esgotado ? 'ESGOTADO' : 'COMPRAR'}</span>
+            <span className="xs:hidden">{esgotado ? 'ESGOT.' : 'ADD'}</span>
           </button>
         </div>
       </div>
