@@ -326,7 +326,7 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
               <span className="deco-line"/>Cosméticos & Estética Premium
             </p>
             <h1 className="font-display text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-light leading-[1.05] text-obsidian reveal reveal-delay-1">
-              Sua Pele,<br/><em className="text-sage">Sua Melhor</em><br/>Versão.
+            Vivendo A,<br/><em className="text-sage">Sua Melhor</em><br/>Versão.
             </h1>
             <p className="font-body font-light text-obsidian/60 mt-6 text-base leading-relaxed max-w-md reveal reveal-delay-2">
               Cosméticos desenvolvidos com tecnologia de ponta e ingredientes selecionados para revelar a beleza que já existe em você.
