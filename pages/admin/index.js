@@ -57,16 +57,10 @@ export default function AdminPage() {
         {/* ── SIDEBAR ── */}
         <aside className="hidden md:flex w-60 flex-col border-r border-white/8 px-4 py-8 flex-shrink-0"
           style={{ background: 'rgba(255,255,255,0.03)' }}>
-          <div className="flex items-center gap-2 px-2 mb-10">
-            <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-              <ellipse cx="14" cy="18" rx="9" ry="8" fill="#4a7c59" opacity=".85"/>
-              <rect x="11" y="6" width="6" height="6" rx="2" fill="#fafaf8"/>
-              <rect x="12.5" y="3" width="3" height="4" rx="1.5" fill="#4a7c59"/>
-            </svg>
-            <span className="font-display text-lg font-light tracking-widest text-white">
-              YOU<strong className="text-sage">360</strong>
-            </span>
-          </div>
+          <div className="flex items-center px-2 mb-10">
+  {/* eslint-disable-next-line @next/next/no-img-element */}
+  <img src="/IMG-20260325-WA0003-removebg-preview.png" alt="YOU360" className="h-10 w-auto object-contain brightness-0 invert"/>
+</div>
           <nav className="flex-1 space-y-1">
             <SidebarLink active={activeTab==='hero'} onClick={() => setActiveTab('hero')}
               icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="11" rx="2"/><path d="M3 17h18M7 21h10"/></svg>}
@@ -104,7 +98,8 @@ export default function AdminPage() {
         {/* ── MAIN ── */}
         <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
           <div className="md:hidden flex items-center justify-between px-5 py-4 border-b border-white/8">
-            <span className="font-display text-lg font-light tracking-widest text-white">YOU<strong className="text-sage">360</strong></span>
+           {/* eslint-disable-next-line @next/next/no-img-element */}
+<img src="/IMG-20260325-WA0003-removebg-preview.png" alt="YOU360" className="h-8 w-auto object-contain brightness-0 invert"/>
             <button onClick={handleLogout} className="font-body text-xs text-white/40 hover:text-white">Sair</button>
           </div>
           <div className="md:hidden flex border-b border-white/8 overflow-x-auto">

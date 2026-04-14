@@ -204,17 +204,10 @@ export default function Home({ initialProducts, heroConfig, linhasConfig, depoim
 
       {/* ── NAVBAR ─────────────────────────────────────────────── */}
       <nav ref={navRef} className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 py-5 px-6 md:px-12 flex items-center justify-between">
-        <a href="#home" className="flex items-center gap-2">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <ellipse cx="14" cy="18" rx="9" ry="8" fill="#4a7c59" opacity=".85"/>
-            <rect x="11" y="6" width="6" height="6" rx="2" fill="#0f0f0f"/>
-            <rect x="12.5" y="3" width="3" height="4" rx="1.5" fill="#4a7c59"/>
-            <circle cx="14" cy="18" r="4" fill="#fafaf8" opacity=".25"/>
-          </svg>
-          <span className="font-display text-2xl font-light tracking-widest text-obsidian">
-            YOU<strong className="font-semibold text-sage">360</strong>
-          </span>
-        </a>
+       <a href="#home" className="flex items-center">
+  {/* eslint-disable-next-line @next/next/no-img-element */}
+  <img src="/IMG-20260325-WA0003-removebg-preview.png" alt="YOU360" className="h-10 w-auto object-contain"/>
+</a>
 
         <ul className="hidden md:flex items-center gap-8 font-body text-sm font-light tracking-widest text-obsidian/70">
           {[['#home','INÍCIO'],['#banners','LINHAS'],['#produtos','PRODUTOS'],['#sobre','SOBRE'],['#depoimentos','DEPOIMENTOS']].map(([href,label]) => (
@@ -683,10 +676,10 @@ function Footer({ products }) {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-2 mb-5">
-              <svg width="24" height="24" viewBox="0 0 28 28" fill="none"><ellipse cx="14" cy="18" rx="9" ry="8" fill="#4a7c59" opacity=".85"/><rect x="11" y="6" width="6" height="6" rx="2" fill="#fafaf8"/><rect x="12.5" y="3" width="3" height="4" rx="1.5" fill="#4a7c59"/></svg>
-              <span className="font-display text-xl font-light tracking-widest text-white">YOU<strong className="font-semibold text-sage">360</strong></span>
-            </div>
+           <div className="flex items-center mb-5">
+  {/* eslint-disable-next-line @next/next/no-img-element */}
+  <img src="/IMG-20260325-WA0003-removebg-preview.png" alt="YOU360" className="h-10 w-auto object-contain brightness-0 invert"/>
+</div>
             <p className="font-body text-sm text-white/40 leading-relaxed max-w-xs">Cosméticos premium que celebram a individualidade através de produtos únicos e transformadores.</p>
           </div>
           <div>
